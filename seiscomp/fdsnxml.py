@@ -231,6 +231,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         outUnit = None
         lowFreq = None
         highFreq = None
+        inputSampleRate = None
         decimationFactor = None
         delay = None
         correction = None
@@ -252,7 +253,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             elif e.tag == ns + "Decimation":
                 for e1 in e:
-                    if e1.tag == ns + "Factor":
+                    if e1.tag == ns + "InputSampleRate":
+                        inputSampleRate = float(e1.text)
+
+                    elif e1.tag == ns + "Factor":
                         decimationFactor = int(e1.text)
 
                     elif e1.tag == ns + "Delay":
@@ -272,8 +276,8 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         if resp is not None:
             if hasattr(resp, "decimationFactor"):
                 resp.decimationFactor = decimationFactor
-                resp.delay = delay
-                resp.correction = correction
+                resp.delay = delay * inputSampleRate
+                resp.correction = correction * inputSampleRate
 
             if hasattr(resp, "gainFrequency"):
                 resp.gainFrequency = gainFrequency
@@ -296,7 +300,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                         cha.gainFrequency = float(e1.text)
 
                     elif e1.tag == ns + "InputUnits":
-                        cha.gainUnit = e1.text
+                        for e2 in e1:
+                            if e2.tag == ns + "Name":
+                                cha.gainUnit = e2.text
 
             elif e.tag == ns + "Stage":
                 stages[int(e.attrib['number'])] = self.__stage(e)
@@ -364,7 +370,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 loc.end = end
 
         except KeyError:
-            loc = sta.insert_sensorLocation(locationCode, start, end=end)
+            loc = sta.insert_sensorLocation(locationCode, start, end=end, publicID=uuid.uuid1())
             locs[(locationCode, start)] = loc
 
         cha = loc.insert_stream(code, start, end=end)
@@ -373,7 +379,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         cha.format = "steim2"
         cha.flags = ""
         cha.sensor = str(uuid.uuid1())
+        cha.sensorChannel = 0
         cha.datalogger = str(uuid.uuid1())
+        cha.dataloggerChannel = 0
 
         sensor = self.insert_sensor(name=cha.sensor, publicID=cha.sensor)
         logger = self.insert_datalogger(name=cha.datalogger, publicID=cha.datalogger)
@@ -433,6 +441,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     elif e1.tag == ns + "Type":
                         sensor.type = e1.text
 
+                    elif e1.tag == ns + "SerialNumber":
+                        cha.sensorSerialNumber = e1.text
+
             elif e.tag == ns + "DataLogger":
                 for e1 in e:
                     if e1.tag == ns + "Description":
@@ -442,14 +453,20 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                         logger.digitizerModel = e1.text
                         logger.recorderModel = e1.text
 
+                    elif e1.tag == ns + "SerialNumber":
+                        cha.dataloggerSerialNumber = e1.text
+
             elif e.tag == ns + "Response":
                 self.__process_response(e, cha, sensor, logger)
+
+        if not cha.flags:
+            cha.flags = "GC"
 
 
     def __process_station(self, tree, net):
         code = tree.attrib['code']
         start = dateutil.parser.parse(tree.attrib['startDate']).replace(tzinfo=None)
-        sta = net.insert_station(code, start)
+        sta = net.insert_station(code, start, publicID=uuid.uuid1())
 
         try:
             sta.end = dateutil.parser.parse(tree.attrib['endDate']).replace(tzinfo=None)
@@ -460,6 +477,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         sta.restricted = (tree.attrib.get("restrictedStatus", "").lower() == "closed")
         sta.shared = True
         sta.archive = self.__archive
+        sta.archiveNetworkCode = net.code
 
         locs = {}
 
@@ -477,6 +495,8 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 for e1 in e:
                     if e1.tag == ns + "Name":
                         sta.description = e1.text
+
+                    elif e1.tag == ns + "Town":
                         sta.place = e1.text
 
                     elif e1.tag == ns + "Country":
@@ -489,7 +509,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
     def __process_network(self, tree):
         code = tree.attrib['code']
         start = dateutil.parser.parse(tree.attrib['startDate']).replace(tzinfo=None)
-        net = self.insert_network(code, start)
+        net = self.insert_network(code, start, publicID=uuid.uuid1())
 
         try:
             net.end = dateutil.parser.parse(tree.attrib['endDate']).replace(tzinfo=None)
@@ -500,6 +520,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         net.restricted = (tree.attrib.get("restrictedStatus", "").lower() == "closed")
         net.shared = True
         net.archive = self.__archive
+        net.netClass = 't' if code[0] in "0123456789XYZ" else 'p'
 
         for e in tree:
             if e.tag == ns + "Description":
