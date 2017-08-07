@@ -5,6 +5,7 @@
 ###########################################################################
 
 import uuid
+import datetime
 import dateutil.parser
 import seiscomp.db.generic.inventory
 from xml.etree import cElementTree as ET
@@ -360,7 +361,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         try:
             end = dateutil.parser.parse(tree.attrib['endDate']).replace(tzinfo=None)
 
-        except (KeyError, ValueError):
+            if end > datetime.datetime(2100, 1, 1):
+                end = None
+
+        except KeyError:
             end = None
 
         try:
@@ -471,7 +475,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         try:
             sta.end = dateutil.parser.parse(tree.attrib['endDate']).replace(tzinfo=None)
 
-        except (KeyError, ValueError):
+            if sta.end > datetime.datetime(2100, 1, 1):
+                sta.end = None
+
+        except KeyError:
             sta.end = None
 
         sta.restricted = (tree.attrib.get("restrictedStatus", "").lower() == "closed")
@@ -514,7 +521,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         try:
             net.end = dateutil.parser.parse(tree.attrib['endDate']).replace(tzinfo=None)
 
-        except (KeyError, ValueError):
+            if net.end > datetime.datetime(2100, 1, 1):
+                net.end = None
+
+        except KeyError:
             net.end = None
 
         net.restricted = (tree.attrib.get("restrictedStatus", "").lower() == "closed")
