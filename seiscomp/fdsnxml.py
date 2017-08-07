@@ -231,12 +231,12 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         outUnit = None
         lowFreq = None
         highFreq = None
-        inputSampleRate = None
-        decimationFactor = None
-        delay = None
-        correction = None
+        inputSampleRate = 0
+        decimationFactor = 1
+        delay = 0
+        correction = 0
         gain = 1.0
-        gainFrequency = None
+        gainFrequency = 0.0
 
         for e in tree:
             if e.tag == ns + "PolesZeros":
