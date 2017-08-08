@@ -232,10 +232,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         outUnit = None
         lowFreq = None
         highFreq = None
-        inputSampleRate = 0
+        inputSampleRate = 0.0
         decimationFactor = 1
-        delay = 0
-        correction = 0
+        delay = 0.0
+        correction = 0.0
         gain = 1.0
         gainFrequency = 0.0
 
@@ -386,6 +386,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         cha.sensorChannel = 0
         cha.datalogger = str(uuid.uuid1())
         cha.dataloggerChannel = 0
+        clockDrift = None
 
         sensor = self.insert_sensor(name=cha.sensor, publicID=cha.sensor)
         logger = self.insert_datalogger(name=cha.datalogger, publicID=cha.datalogger)
@@ -460,8 +461,14 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     elif e1.tag == ns + "SerialNumber":
                         cha.dataloggerSerialNumber = e1.text
 
+            elif e.tag == ns + "ClockDrift":
+                clockDrift = float(e.text)
+
             elif e.tag == ns + "Response":
                 self.__process_response(e, cha, sensor, logger)
+
+        if cha.sampleRateDenominator and clockDrift is not None:
+            logger.maxClockDrift = clockDrift * cha.sampleRateNumerator / cha.sampleRateDenominator
 
         if not cha.flags:
             cha.flags = "GC"
