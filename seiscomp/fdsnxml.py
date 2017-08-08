@@ -13,6 +13,14 @@ from xml.etree import cElementTree as ET
 ns = "{http://www.fdsn.org/xml/station/1}"
 
 
+def _is_fir_response(obj):
+    return hasattr(obj, "symmetry")
+
+
+def _is_paz_response(obj):
+    return hasattr(obj, "poles")
+
+
 class Error(Exception):
     pass
 
@@ -262,12 +270,12 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                         gainFrequency = float(e1.text)
 
         if resp is not None:
-            if hasattr(resp, "decimationFactor"):
+            if _is_fir_response(resp):
                 resp.decimationFactor = decimationFactor
                 resp.delay = delay * inputSampleRate
                 resp.correction = correction * inputSampleRate
 
-            if hasattr(resp, "gainFrequency"):
+            else:
                 resp.gainFrequency = gainFrequency
 
             resp.gain = gain
@@ -314,6 +322,14 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             resp, inUnit, outUnit, lowFreq, highFreq, gain = stages[i+1]
 
             if not sensor.response:
+                if _is_fir_response(resp):
+                    loc = cha.mySensorLocation
+                    sta = loc.myStation
+                    net = sta.myNetwork
+
+                    raise Error("%s.%s.%s.%s.%s: invalid stage 1 response"
+                                % (net.code, sta.code, loc.code, cha.code, cha.start.isoformat()))
+
                 sensor.response = resp.publicID
                 sensor.unit = inUnit
                 sensor.lowFrequency = lowFreq
@@ -329,11 +345,11 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             elif inUnit == "COUNTS" and outUnit != "COUNTS":
                 raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
 
-            elif hasattr(resp, "numberOfCoefficients") and resp.numberOfCoefficients == 0:
+            elif _is_fir_response(resp) and resp.numberOfCoefficients == 0:
                 logger.gain *= resp.gain
                 self.remove_responseFIR(resp.name)
 
-            elif hasattr(resp, "numberOfPoles") and resp.numberOfPoles == 0 and resp.numberOfZeros == 0:
+            elif _is_paz_response(resp) and resp.numberOfPoles == 0 and resp.numberOfZeros == 0:
                 logger.gain *= resp.gain
                 self.remove_responsePAZ(resp.name)
 
