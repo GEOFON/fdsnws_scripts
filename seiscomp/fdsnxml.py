@@ -277,6 +277,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
     def __process_response(self, tree, cha, sensor, logger):
         stages = {}
+        fallback = None
 
         for e in tree:
             if e.tag == ns + "InstrumentSensitivity":
@@ -292,11 +293,20 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                             if e2.tag == ns + "Name":
                                 cha.gainUnit = e2.text
 
+            elif e.tag == ns + "InstrumentPolynomial":
+                resp, inUnit, outUnit, lowFreq, highFreq = self.__polynomial(e)
+                resp.gain = 1.0
+                resp.gainFrequency = 0.0
+                fallback = (resp, inUnit, outUnit, lowFreq, highFreq, 1.0)
+
             elif e.tag == ns + "Stage":
                 stages[int(e.attrib['number'])] = self.__stage(e)
 
-        unit = None
+        if not stages and fallback:
+            stages[1] = fallback
+
         logger.gain = 1.0
+        unit = None
         afc = []
         dfc = []
 
