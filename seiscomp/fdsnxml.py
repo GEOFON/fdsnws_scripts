@@ -181,23 +181,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             elif e.tag == ns + "FrequencyLowerBound":
                 lowFreq = float(e.text)
-                unit = e.attrib.get("unit", "HERTZ")
-
-                if unit == "RADIANS/SECOND":
-                    resp.frequencyUnit = 'A'
-
-                else:
-                    resp.frequencyUnit = 'B'
 
             elif e.tag == ns + "FrequencyUpperBound":
                 highFreq = float(e.text)
-                unit = e.attrib.get("unit", "HERTZ")
-
-                if unit == "RADIANS/SECOND":
-                    resp.frequencyUnit = 'A'
-
-                else:
-                    resp.frequencyUnit = 'B'
 
             elif e.tag == ns + "ApproximationLowerBound":
                 resp.approximationLowerBound = float(e.text or "0")
@@ -221,6 +207,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
 
+        resp.frequencyUnit = 'B'
         resp.numberOfCoefficients = len(coeff)
         resp.coefficients = " ".join(coeff)
         return resp, inUnit, outUnit, lowFreq, highFreq
