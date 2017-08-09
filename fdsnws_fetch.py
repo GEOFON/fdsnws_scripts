@@ -97,7 +97,7 @@ except ImportError:
     import urllib.parse as urlparse
     import urllib.parse as urllib
 
-VERSION = "2017.072"
+VERSION = "2017.221"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -242,7 +242,7 @@ class XMLCombiner(object):
 
         for el in one:
             try:
-                eid = (el.tag, el.attrib['code'], el.attrib['start'])
+                eid = (el.tag, el.attrib['code'], el.attrib['startDate'])
                 mapping[eid] = el
 
             except KeyError:
@@ -256,7 +256,7 @@ class XMLCombiner(object):
                 continue
 
             try:
-                eid = (el.tag, el.attrib['code'], el.attrib['start'])
+                eid = (el.tag, el.attrib['code'], el.attrib['startDate'])
 
                 try:
                     self.__combine_element(mapping[eid], el)
@@ -266,7 +266,7 @@ class XMLCombiner(object):
                     one.append(el)
 
             except KeyError:
-                one.append(el)
+                pass
 
     def combine(self, et):
         if self.__et:
