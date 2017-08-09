@@ -306,6 +306,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 resp.gain = 1.0
                 resp.gainFrequency = 0.0
                 fallback = (resp, inUnit, outUnit, lowFreq, highFreq, 1.0)
+                cha.gainUnit = inUnit
 
             elif e.tag == ns + "Stage":
                 stages[int(e.attrib['number'])] = self.__stage(e)
