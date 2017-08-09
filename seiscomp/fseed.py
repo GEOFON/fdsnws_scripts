@@ -2601,9 +2601,17 @@ class SEEDVolume(object):
         if self.__waveform_data is not None:
             for (net_code, stat_code, loc_id, chan_id, start_time, end_time) in \
                 self.__waveform_data.get_series_data():
-                self.add_chan(net_code, stat_code, loc_id, chan_id, start_time, \
-                    end_time, strict)
-        
+                try:
+                    self.add_chan(net_code, stat_code, loc_id, chan_id, start_time, end_time, strict)
+
+                except SEEDError as e:
+                    if strict:
+                        raise SEEDError, "%s.%s.%s.%s.%s: %s" % \
+                            (net_code, stat_code, loc_id, chan_id, start_time.isoformat(), e)
+
+                    logs.warning("%s.%s.%s.%s.%s: %s" %
+                        (net_code, stat_code, loc_id, chan_id, start_time.isoformat(), e))
+
         sta_list = self.__station.values()
         sta_list.sort()
 

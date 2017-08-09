@@ -21,6 +21,13 @@ def _is_paz_response(obj):
     return hasattr(obj, "poles")
 
 
+def _cha_id(cha):
+    loc = cha.mySensorLocation
+    sta = loc.myStation
+    net = sta.myNetwork
+    return "%s.%s.%s.%s.%s" % (net.code, sta.code, loc.code, cha.code, cha.start.isoformat())
+
+
 class Error(Exception):
     pass
 
@@ -275,6 +282,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 resp.delay = delay * inputSampleRate
                 resp.correction = correction * inputSampleRate
 
+            elif decimationFactor != 1:
+                raise Error("decimation not supported by filter")
+
             else:
                 resp.gainFrequency = gainFrequency
 
@@ -309,7 +319,13 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 cha.gainUnit = inUnit
 
             elif e.tag == ns + "Stage":
-                stages[int(e.attrib['number'])] = self.__stage(e)
+                i = int(e.attrib['number'])
+
+                try:
+                    stages[i] = self.__stage(e)
+
+                except Error as ex:
+                    raise Error("%s stage %d: %s" % (_cha_id(cha), i, ex))
 
         if not stages and fallback:
             stages[1] = fallback
@@ -319,17 +335,16 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         afc = []
         dfc = []
 
-        for i in range(len(stages)):
-            resp, inUnit, outUnit, lowFreq, highFreq, gain = stages[i+1]
+        for i in range(1, len(stages)+1):
+            try:
+                resp, inUnit, outUnit, lowFreq, highFreq, gain = stages[i]
+
+            except KeyError:
+                raise Error("%s: missing stage %d" % (_cha_id(cha), i))
 
             if not sensor.response:
                 if _is_fir_response(resp):
-                    loc = cha.mySensorLocation
-                    sta = loc.myStation
-                    net = sta.myNetwork
-
-                    raise Error("%s.%s.%s.%s.%s: invalid stage 1 response"
-                                % (net.code, sta.code, loc.code, cha.code, cha.start.isoformat()))
+                    raise Error("%s: invalid stage 1 response" % _cha_id(cha))
 
                 sensor.response = resp.publicID
                 sensor.unit = inUnit
@@ -341,10 +356,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 continue
 
             elif inUnit != unit:
-                raise Error("unexpected input unit: %s, expected: %s" % (inUnit, unit))
+                raise Error("%s stage %d: unexpected input unit: %s, expected: %s" % (_cha_id(cha), i, inUnit, unit))
 
             elif inUnit == "COUNTS" and outUnit != "COUNTS":
-                raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
+                raise Error("%s stage %d: unexpected output unit: %s, expected: COUNTS" % (_cha_id(cha), i, outUnit))
 
             elif _is_fir_response(resp) and resp.numberOfCoefficients == 0:
                 logger.gain *= resp.gain
@@ -437,9 +452,13 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     cha.sampleRateNumerator = int(round(sampleRate))
                     cha.sampleRateDenominator = 1
 
-                else:
+                elif sampleRate > 0:
                     cha.sampleRateNumerator = 1
                     cha.sampleRateDenominator = int(round(1/sampleRate))
+
+                else:
+                    cha.sampleRateNumerator = 0
+                    cha.sampleRateDenominator = 0
 
             elif e.tag == ns + "SampleRateRatio":
                 for e1 in e:
@@ -452,7 +471,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             elif e.tag == ns + "Sensor":
                 for e1 in e:
                     if e1.tag == ns + "Description":
-                        sensor.description = e1.text
+                        sensor.description = e1.text.encode('utf-8')
 
                     elif e1.tag == ns + "Model":
                         sensor.model = e1.text
@@ -466,7 +485,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             elif e.tag == ns + "DataLogger":
                 for e1 in e:
                     if e1.tag == ns + "Description":
-                        logger.description = e1.text
+                        logger.description = e1.text.encode('utf-8')
 
                     elif e1.tag == ns + "Model":
                         logger.digitizerModel = e1.text
@@ -522,7 +541,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             elif e.tag == ns + "Site":
                 for e1 in e:
                     if e1.tag == ns + "Name":
-                        sta.description = e1.text
+                        sta.description = e1.text.encode('utf-8')
 
                     elif e1.tag == ns + "Town":
                         sta.place = e1.text
@@ -555,7 +574,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
         for e in tree:
             if e.tag == ns + "Description":
-                net.description = e.text
+                net.description = e.text.encode('utf-8')
 
             elif e.tag == ns + "Station":
                 self.__process_station(e, net)

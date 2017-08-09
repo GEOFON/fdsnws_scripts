@@ -14,11 +14,13 @@ import sys
 import os
 import optparse
 import subprocess
+import tempfile
+import shutil
 import dateutil.parser
 from seiscomp import fdsnxml, mseedlite, fseed, logs
 from xml.etree import cElementTree as ET
 
-VERSION = "2017.217"
+VERSION = "2017.221"
 ORGANIZATION = "EIDA"
 
 
@@ -32,7 +34,7 @@ def exec_fetch(param, data, verbose):
         cmd += ["-p", "/dev/stdin"]
 
     cmd += ["-o", "/dev/stdout"]
-    cmd += param
+    cmd += map(str, param)
 
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
@@ -78,8 +80,8 @@ def get_citation(nets, param, verbose):
             logs.error("error parsing text format: %s" % str(e))
             continue
 
-        if code[0] in '0123456789XYZ':
-            net_desc['%s_%d' % (code, year)] = desc
+        if code[0] in "0123456789XYZ":
+            net_desc["%s_%d" % (code, year)] = desc
 
         else:
             net_desc[code] = desc
@@ -99,10 +101,14 @@ def get_citation(nets, param, verbose):
                 % "+".join(sorted(net_desc)))
 
 
+def iterinv(obj):
+    return (j for i in obj.values() for j in i.values())
+
+
 def main():
-    param0 = ['-y', 'station', '-q', 'format=text', '-q', 'level=network']
-    param1 = ['-y', 'station', '-q', 'format=xml', '-q', 'level=response']
-    param2 = ['-y', 'dataselect', '-z']
+    param0 = ["-y", "station", "-q", "format=text", "-q", "level=network"]
+    param1 = ["-y", "station", "-q", "format=xml", "-q", "level=response"]
+    param2 = ["-y", "dataselect", "-z"]
     nets = set()
 
     def add_param0(option, opt_str, value, parser):
@@ -241,28 +247,38 @@ def main():
 
     inv = fdsnxml.Inventory()
 
-    try:
-        inv.load_fdsnxml(proc.stdout)
+    with tempfile.TemporaryFile() as fd:
+        shutil.copyfileobj(proc.stdout, fd)
 
-    except ET.ParseError as e:
-        if str(e) != "no element found: line 1, column 0":
-            raise
+        proc.stdout.close()
+        proc.wait()
 
-    proc.stdout.close()
-    proc.wait()
+        if proc.returncode != 0:
+            logs.error("error running fdsnws_fetch")
+            return 1
 
-    if proc.returncode != 0:
-        logs.error("error running fdsnws_fetch")
-        return 1
+        if fd.tell():
+            fd.seek(0)
+
+            try:
+                inv.load_fdsnxml(fd)
+
+            except fdsnxml.Error as e:
+                logs.error(e)
+                return 1
 
     seed_volume = fseed.SEEDVolume(inv, ORGANIZATION, options.label, False)
 
     if options.dataless:
-        for net in sum([i.values() for i in inv.network.itervalues()], []):
-            for sta in sum([i.values() for i in net.station.itervalues()], []):
-                for loc in sum([i.values() for i in sta.sensorLocation.itervalues()], []):
-                    for cha in sum([i.values() for i in loc.stream.itervalues()], []):
-                        seed_volume.add_chan(net.code, sta.code, loc.code, cha.code, cha.start, cha.end)
+        for net in iterinv(inv.network):
+            for sta in iterinv(net.station):
+                for loc in iterinv(sta.sensorLocation):
+                    for cha in iterinv(loc.stream):
+                        try:
+                            seed_volume.add_chan(net.code, sta.code, loc.code, cha.code, cha.start, cha.end)
+
+                        except fseed.SEEDError as e:
+                            logs.warning("%s.%s.%s.%s.%s: %s" % (net.code, sta.code, loc.code, cha.code, cha.start.isoformat(), e))
 
     else:
         try:
@@ -274,7 +290,12 @@ def main():
             return 1
 
         for rec in mseedlite.Input(proc.stdout):
-            seed_volume.add_data(rec)
+            try:
+                seed_volume.add_data(rec)
+
+            except fseed.SEEDError as e:
+                logs.warning("%s.%s.%s.%s.%s: %s" % (rec.net.code, rec.sta.code, rec.loc.code, rec.cha.code, rec.cha.start.isoformat(), e))
+
             nets.add((rec.net, rec.begin_time.year))
 
         proc.stdout.close()
@@ -285,7 +306,12 @@ def main():
             return 1
 
     with open(options.output_file, "wb") as fd:
-        seed_volume.output(fd)
+        try:
+            seed_volume.output(fd)
+
+        except fseed.SEEDError as e:
+            logs.error(e)
+            return 1
 
     if nets and not options.no_citation:
         logs.info("retrieving network citation info")
