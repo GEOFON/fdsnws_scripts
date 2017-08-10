@@ -20,7 +20,7 @@ import dateutil.parser
 
 from seiscomp import mseedlite, logs
 
-VERSION = "2017.221"
+VERSION = "2017.222"
 
 
 class Error(Exception):
@@ -206,7 +206,7 @@ def main():
         times[option.dest] = t
 
     parser = optparse.OptionParser(
-            usage="Usage: %prog [-h|--help] [OPTIONS] -o file",
+            usage="Usage: %prog [-h|--help] [OPTIONS] -o directory",
             version="%prog " + VERSION)
 
     parser.set_defaults(
