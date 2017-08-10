@@ -97,7 +97,7 @@ except ImportError:
     import urllib.parse as urlparse
     import urllib.parse as urllib
 
-VERSION = "2017.221"
+VERSION = "2017.222"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -586,6 +586,8 @@ def fetch(url, cred, authdata, postlines, xc, tc, dest, nets, timeout,
                         else:
                             msg("authentication at %s failed with HTTP "
                                 "status code %d" % (auth_url, fd.getcode()))
+
+                            query_url = url.post()
 
                     finally:
                         fd.close()
