@@ -23,7 +23,7 @@ try:
     inv.load_fdsnxml(sys.argv[1])
 
 except fdsnxml.Error as e:
-    print(e)
+    print(e, file=sys.stderr)
     sys.exit(1)
 
 inv.save_xml(sys.argv[2] if len(sys.argv) == 3 else sys.stdout, instr=1)

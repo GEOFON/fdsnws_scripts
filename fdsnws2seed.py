@@ -18,9 +18,8 @@ import tempfile
 import shutil
 import dateutil.parser
 from seiscomp import fdsnxml, mseedlite, fseed, logs
-from xml.etree import cElementTree as ET
 
-VERSION = "2017.221"
+VERSION = "2017.222"
 ORGANIZATION = "EIDA"
 
 

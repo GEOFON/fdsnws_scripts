@@ -100,6 +100,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
 
+        if resp.type == 'D' and outUnit != "COUNTS":
+            raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
+
         resp.numberOfPoles = len(poles)
         resp.numberOfZeros = len(zeros)
         resp.poles = " ".join(poles)
@@ -136,6 +139,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 for e1 in e:
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
+
+        if outUnit != "COUNTS":
+            raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
 
         resp.numberOfCoefficients = len(coeff)
         resp.coefficients = " ".join(coeff)
@@ -174,6 +180,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 for e1 in e:
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
+
+        if outUnit != "COUNTS":
+            raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
 
         resp.numberOfCoefficients = len(coeff)
         resp.coefficients = " ".join(coeff)
@@ -342,14 +351,34 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             except KeyError:
                 raise Error("%s: missing stage %d" % (_cha_id(cha), i))
 
-            if not sensor.response:
-                if _is_fir_response(resp):
-                    raise Error("%s: invalid stage 1 response" % _cha_id(cha))
-
-                sensor.response = resp.publicID
+            if i == 1:
                 sensor.unit = inUnit
-                sensor.lowFrequency = lowFreq
-                sensor.highFrequency = highFreq
+
+                if resp is None:
+                    raise Error("%s: missing stage 1 response" % _cha_id(cha))
+
+                elif _is_fir_response(resp) or (_is_paz_response(resp) and resp.type == 'D'):
+                    # add dummy sensor to digital input
+                    uu = str(uuid.uuid1())
+                    paz = self.insert_responsePAZ(name=uu, publicID=uu)
+                    paz.type = 'A'
+                    paz.gain = 1.0
+                    paz.gainFrequency = 0.0
+                    paz.normalizationFactor = 1.0
+                    paz.normalizationFrequency = 0.0
+                    paz.numberOfPoles = 0
+                    paz.numberOfZeros = 0
+                    sensor.response = paz.publicID
+                    sensor.lowFrequency = None
+                    sensor.highFrequency = None
+                    inUnit = "COUNTS"
+
+                else:
+                    sensor.response = resp.publicID
+                    sensor.lowFrequency = lowFreq
+                    sensor.highFrequency = highFreq
+                    unit = outUnit
+                    continue
 
             elif resp is None:
                 logger.gain *= gain
@@ -358,10 +387,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             elif inUnit != unit:
                 raise Error("%s stage %d: unexpected input unit: %s, expected: %s" % (_cha_id(cha), i, inUnit, unit))
 
-            elif inUnit == "COUNTS" and outUnit != "COUNTS":
-                raise Error("%s stage %d: unexpected output unit: %s, expected: COUNTS" % (_cha_id(cha), i, outUnit))
-
-            elif _is_fir_response(resp) and resp.numberOfCoefficients == 0:
+            if _is_fir_response(resp) and resp.numberOfCoefficients == 0:
                 logger.gain *= resp.gain
                 self.remove_responseFIR(resp.name)
 
@@ -580,12 +606,19 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 self.__process_station(e, net)
 
     def load_fdsnxml(self, src):
-        tree = ET.parse(src).getroot()
+        try:
+            tree = ET.parse(src).getroot()
+
+        except ET.ParseError as ex:
+            raise Error(ex)
 
         for e in tree:
             if e.tag == ns + "Source":
                 self.__archive = e.text
 
             elif e.tag == ns + "Network":
+                if 'startDate' not in e.attrib:
+                    raise Error("network %s is missing startDate" % e.attrib['code'])
+
                 self.__process_network(e)
 
