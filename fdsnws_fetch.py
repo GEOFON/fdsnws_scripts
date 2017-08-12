@@ -97,7 +97,7 @@ except ImportError:
     import urllib.parse as urlparse
     import urllib.parse as urllib
 
-VERSION = "2017.222"
+VERSION = "2017.223"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -1139,7 +1139,7 @@ def main():
         return 0
 
     if args or not options.output_file:
-        parser.print_usage()
+        parser.print_usage(sys.stderr)
         return 1
 
     if bool(options.post_file) + bool(options.arclink_file) + \

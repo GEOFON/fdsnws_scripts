@@ -19,7 +19,7 @@ import shutil
 import dateutil.parser
 from seiscomp import fdsnxml, mseedlite, fseed, logs
 
-VERSION = "2017.222"
+VERSION = "2017.223"
 ORGANIZATION = "EIDA"
 
 
@@ -220,7 +220,7 @@ def main():
     (options, args) = parser.parse_args()
 
     if args or not options.output_file:
-        parser.print_usage()
+        parser.print_usage(sys.stderr)
         return 1
 
     def log_verbose(s):

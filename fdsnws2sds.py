@@ -20,7 +20,7 @@ import dateutil.parser
 
 from seiscomp import mseedlite, logs
 
-VERSION = "2017.222"
+VERSION = "2017.223"
 
 
 class Error(Exception):
@@ -288,7 +288,7 @@ def main():
     (options, args) = parser.parse_args()
 
     if args or not options.output_dir:
-        parser.print_usage()
+        parser.print_usage(sys.stderr)
         return 1
 
     def log_verbose(s):
