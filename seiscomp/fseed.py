@@ -2346,26 +2346,26 @@ class _WaveformData(object):
                     contiguous = False
 
                 if rec.X_minus1 is None:
-                    logs.warning("%s %s %s %s X[-1] not defined" %
+                    logs.debug("%s %s %s %s X[-1] not defined" %
                         (rec.net, rec.sta, rec.loc, rec.cha))
                     contiguous = False
             else:
                 contiguous = False
                 
             if self.__cur_rec.fsamp != rec.fsamp:
-                logs.warning("%s %s %s %s sample rate changed from %f to %f" %
+                logs.debug("%s %s %s %s sample rate changed from %f to %f" %
                     (rec.net, rec.sta, rec.loc, rec.cha, self.__cur_rec.fsamp,
                     rec.fsamp))
                 contiguous = False
 
             if self.__cur_rec.encoding != rec.encoding:
-                logs.warning("%s %s %s %s encoding changed from %d to %d" %
+                logs.debug("%s %s %s %s encoding changed from %d to %d" %
                     (rec.net, rec.sta, rec.loc, rec.cha, self.__cur_rec.encoding,
                     rec.encoding))
                 contiguous = False
 
             if contiguous and self.__cur_rec.Xn != rec.X_minus1:
-                logs.warning("%s %s %s %s non-contiguous data: %d != %d" %
+                logs.debug("%s %s %s %s non-contiguous data: %d != %d" %
                     (rec.net, rec.sta, rec.loc, rec.cha, self.__cur_rec.Xn,
                     rec.X_minus1))
                 contiguous = False

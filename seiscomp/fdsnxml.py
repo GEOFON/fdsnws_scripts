@@ -8,6 +8,7 @@ import uuid
 import datetime
 import dateutil.parser
 import seiscomp.db.generic.inventory
+from seiscomp import logs
 from xml.etree import cElementTree as ET
 
 ns = "{http://www.fdsn.org/xml/station/1}"
@@ -26,6 +27,25 @@ def _cha_id(cha):
     sta = loc.myStation
     net = sta.myNetwork
     return "%s.%s.%s.%s.%s" % (net.code, sta.code, loc.code, cha.code, cha.start.isoformat())
+
+
+def _optimize_fir(coeff):
+    i = 0
+
+    while i*2 < len(coeff):
+        if coeff[i] != coeff[-i-1]:
+            break
+
+        i += 1
+
+    if i*2 == len(coeff):
+        return 'C', i
+
+    elif i*2 > len(coeff):
+        return 'B', i
+
+    else:
+        return 'A', len(coeff)
 
 
 class Error(Exception):
@@ -112,7 +132,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
     def __coefficients(self, tree):
         uu = str(uuid.uuid1())
-        resp = self.insert_responseFIR(name=uu, publicID=uu, symmetry='A')
+        resp = self.insert_responseFIR(name=uu, publicID=uu)
         inUnit = None
         outUnit = None
         lowFreq = None
@@ -128,7 +148,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 coeff.append(e.text)
 
             elif e.tag == ns + "Denominator":
-                raise Error("IIR filters not supported")
+                raise Error("IIR coefficients not supported")
 
             elif e.tag == ns + "InputUnits":
                 for e1 in e:
@@ -143,8 +163,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         if outUnit != "COUNTS":
             raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
 
-        resp.numberOfCoefficients = len(coeff)
-        resp.coefficients = " ".join(coeff)
+        symmetry, ncoeff = _optimize_fir(coeff)
+        resp.symmetry = symmetry
+        resp.numberOfCoefficients = ncoeff
+        resp.coefficients = " ".join(coeff[:ncoeff])
         return resp, inUnit, outUnit, lowFreq, highFreq
 
 
@@ -184,8 +206,16 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         if outUnit != "COUNTS":
             raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
 
-        resp.numberOfCoefficients = len(coeff)
-        resp.coefficients = " ".join(coeff)
+        if resp.symmetry == 'A':
+            symmetry, ncoeff = _optimize_fir(coeff)
+            resp.symmetry = symmetry
+            resp.numberOfCoefficients = ncoeff
+            resp.coefficients = " ".join(coeff[:ncoeff])
+
+        else:
+            resp.numberOfCoefficients = len(coeff)
+            resp.coefficients = " ".join(coeff)
+
         return resp, inUnit, outUnit, lowFreq, highFreq
 
 
@@ -387,7 +417,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             elif inUnit != unit:
                 raise Error("%s stage %d: unexpected input unit: %s, expected: %s" % (_cha_id(cha), i, inUnit, unit))
 
-            if _is_fir_response(resp) and resp.numberOfCoefficients == 0:
+            if _is_fir_response(resp) and (resp.numberOfCoefficients == 0 or (resp.numberOfCoefficients == 1 and float(resp.coefficients) == 1.0)):
                 logger.gain *= resp.gain
                 self.remove_responseFIR(resp.name)
 
@@ -395,7 +425,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 logger.gain *= resp.gain
                 self.remove_responsePAZ(resp.name)
 
-            elif inUnit == "COUNTS":
+            elif _is_fir_response(resp) or (_is_paz_response(resp) and resp.type == 'D'):
                 dfc.append(resp.publicID)
 
             else:
@@ -496,21 +526,18 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             elif e.tag == ns + "Sensor":
                 for e1 in e:
-                    if e1.tag == ns + "Description":
+                    if e1.tag == ns + "Type":
                         sensor.description = e1.text.encode('utf-8')
 
                     elif e1.tag == ns + "Model":
                         sensor.model = e1.text
-
-                    elif e1.tag == ns + "Type":
-                        sensor.type = e1.text
 
                     elif e1.tag == ns + "SerialNumber":
                         cha.sensorSerialNumber = e1.text
 
             elif e.tag == ns + "DataLogger":
                 for e1 in e:
-                    if e1.tag == ns + "Description":
+                    if e1.tag == ns + "Type":
                         logger.description = e1.text.encode('utf-8')
 
                     elif e1.tag == ns + "Model":
@@ -524,7 +551,11 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 clockDrift = float(e.text)
 
             elif e.tag == ns + "Response":
-                self.__process_response(e, cha, sensor, logger)
+                try:
+                    self.__process_response(e, cha, sensor, logger)
+
+                except Error as ex:
+                    logs.error(ex)
 
         if cha.sampleRateDenominator and clockDrift is not None:
             logger.maxClockDrift = clockDrift * cha.sampleRateNumerator / cha.sampleRateDenominator
@@ -609,7 +640,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         try:
             tree = ET.parse(src).getroot()
 
-        except ET.ParseError as ex:
+        except Exception as ex:
             raise Error(ex)
 
         for e in tree:
