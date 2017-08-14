@@ -19,7 +19,7 @@ import shutil
 import dateutil.parser
 from seiscomp import fdsnxml, mseedlite, fseed, logs
 
-VERSION = "2017.223"
+VERSION = "2017.225"
 ORGANIZATION = "EIDA"
 
 
@@ -263,7 +263,7 @@ def main():
                 inv.load_fdsnxml(fd)
 
             except fdsnxml.Error as e:
-                logs.error(e)
+                logs.error(str(e))
                 return 1
 
     seed_volume = fseed.SEEDVolume(inv, ORGANIZATION, options.label, False)
@@ -309,7 +309,7 @@ def main():
             seed_volume.output(fd)
 
         except fseed.SEEDError as e:
-            logs.error(e)
+            logs.error(str(e))
             return 1
 
     if nets and not options.no_citation:

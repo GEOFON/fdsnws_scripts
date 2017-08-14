@@ -12,6 +12,7 @@
 #*****************************************************************************
 
 import re
+import json
 import datetime
 import mseedlite as mseed
 from tempfile import TemporaryFile
@@ -1154,7 +1155,7 @@ class _UnitDict(object):
         self.__used = {}
         self.__blk = []
 
-    def lookup(self, name):
+    def lookup(self, name, remark=None):
         k = self.__used.get(name)
         if k is not None:
             return k
@@ -1165,7 +1166,11 @@ class _UnitDict(object):
 
         desc = self.__units.get(name)
         if desc is None:
-            raise SEEDError, "unknown unit: " + name
+            try:
+                desc = json.loads(remark)['unit']
+
+            except Exception:
+                raise SEEDError, "unknown unit: " + name
 
         b = _Blockette34(key = k, name = name, desc = desc)
         self.__blk.append(b)
@@ -1371,7 +1376,7 @@ class _Response4xFactory(object):
                 pass
 
             if unit:
-                input_units = self.__unit_dict.lookup(unit)
+                input_units = self.__unit_dict.lookup(unit, sensor.remark)
 
             elif _is_paz_response(resp) and resp.numberOfZeros == 0:
                 input_units = self.__unit_dict.lookup("M/S**2")
@@ -1770,7 +1775,7 @@ class _Response5xFactory(object):
             pass
 
         if unit:
-            input_units = self.__unit_dict.lookup(unit)
+            input_units = self.__unit_dict.lookup(unit, sensor.remark)
 
         elif _is_paz_response(resp) and resp.numberOfZeros == 0:
             input_units = self.__unit_dict.lookup("M/S**2")
@@ -2028,7 +2033,7 @@ class _Channel(object):
             pass
 
         if unit:
-            signal_units = unit_dict.lookup(unit)
+            signal_units = unit_dict.lookup(unit, sensor.remark)
 
         elif _is_paz_response(resp) and resp.numberOfZeros == 0:
             signal_units = unit_dict.lookup("M/S**2")
@@ -2111,10 +2116,11 @@ class _Channel(object):
         #if sample_rate != rate:
         #    print digi.name, netcfg.code, statcfg.code, strmcfg.code, "expected sample rate", sample_rate, "actual", rate
         
-        #self.__sens_blk = _Blockette58(gain = sens,
-        #    gain_freq = sens_freq)
+        if strmcfg.gain is None:
+            strmcfg.gain = sens
 
-        # Use overall gain from inventory
+        if strmcfg.gainFrequency is None:
+            strmcfg.gainFrequency = sens_freq
 
         if _is_poly_response(resp):
             self.__stage0_blk = _Blockette62(input_units = signal_units,

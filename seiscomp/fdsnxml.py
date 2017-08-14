@@ -5,13 +5,30 @@
 ###########################################################################
 
 import uuid
+import json
+import math
 import datetime
 import dateutil.parser
 import seiscomp.db.generic.inventory
 from seiscomp import logs
 from xml.etree import cElementTree as ET
 
+try:
+    import scipy.signal
+    _have_scipy = True
+
+except ImportError:
+    _have_scipy = False
+
+
 ns = "{http://www.fdsn.org/xml/station/1}"
+
+
+def _cha_id(cha):
+    loc = cha.mySensorLocation
+    sta = loc.myStation
+    net = sta.myNetwork
+    return "%s.%s.%s.%s.%s" % (net.code, sta.code, loc.code, cha.code, cha.start.isoformat())
 
 
 def _is_fir_response(obj):
@@ -20,13 +37,6 @@ def _is_fir_response(obj):
 
 def _is_paz_response(obj):
     return hasattr(obj, "poles")
-
-
-def _cha_id(cha):
-    loc = cha.mySensorLocation
-    sta = loc.myStation
-    net = sta.myNetwork
-    return "%s.%s.%s.%s.%s" % (net.code, sta.code, loc.code, cha.code, cha.start.isoformat())
 
 
 def _optimize_fir(coeff):
@@ -52,6 +62,10 @@ class Error(Exception):
     pass
 
 
+class Fallback(Exception):
+    pass
+
+
 class Inventory(seiscomp.db.generic.inventory.Inventory):
     def __init__(self):
         super(Inventory, self).__init__()
@@ -62,8 +76,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         resp = self.insert_responsePAZ(name=uu, publicID=uu)
         inUnit = None
         outUnit = None
-        lowFreq = None
-        highFreq = None
+        remark = None
         poles = []
         zeros = []
 
@@ -115,45 +128,52 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     if e1.tag == ns + "Name":
                         inUnit = e1.text
 
+                    if e1.tag == ns + "Description":
+                        remark = json.dumps({"unit": e1.text})
+
             elif e.tag == ns + "OutputUnits":
                 for e1 in e:
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
 
         if resp.type == 'D' and outUnit != "COUNTS":
-            raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
+            raise Error("error: unexpected output unit: %s, expected: COUNTS" % outUnit)
 
         resp.numberOfPoles = len(poles)
         resp.numberOfZeros = len(zeros)
         resp.poles = " ".join(poles)
         resp.zeros = " ".join(zeros)
-        return resp, inUnit, outUnit, lowFreq, highFreq
+        return resp, inUnit, outUnit, remark
 
 
-    def __coefficients(self, tree):
-        uu = str(uuid.uuid1())
-        resp = self.insert_responseFIR(name=uu, publicID=uu)
+    def __fir_coefficients(self, tree):
         inUnit = None
         outUnit = None
-        lowFreq = None
-        highFreq = None
+        remark = None
         coeff = []
+        denominatorCount = 0
 
         for e in tree:
             if e.tag == ns + "CfTransferFunctionType":
                 if e.text != "DIGITAL":
-                    raise Error("unsupported CfTransferFunctionType")
+                    raise Fallback
 
             elif e.tag == ns + "Numerator":
                 coeff.append(e.text)
 
             elif e.tag == ns + "Denominator":
-                raise Error("IIR coefficients not supported")
+                denominatorCount += 1
+
+                if denominatorCount > 1 or float(e.text) != 1.0:
+                    raise Fallback
 
             elif e.tag == ns + "InputUnits":
                 for e1 in e:
                     if e1.tag == ns + "Name":
                         inUnit = e1.text
+
+                    if e1.tag == ns + "Description":
+                        remark = json.dumps({"unit": e1.text})
 
             elif e.tag == ns + "OutputUnits":
                 for e1 in e:
@@ -161,13 +181,92 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                         outUnit = e1.text
 
         if outUnit != "COUNTS":
-            raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
+            raise Error("error: unexpected output unit: %s, expected: COUNTS" % outUnit)
 
         symmetry, ncoeff = _optimize_fir(coeff)
+        del coeff[ncoeff:]
+
+        uu = str(uuid.uuid1())
+        resp = self.insert_responseFIR(name=uu, publicID=uu)
         resp.symmetry = symmetry
-        resp.numberOfCoefficients = ncoeff
-        resp.coefficients = " ".join(coeff[:ncoeff])
-        return resp, inUnit, outUnit, lowFreq, highFreq
+        resp.numberOfCoefficients = len(coeff)
+        resp.coefficients = " ".join(coeff)
+        return resp, inUnit, outUnit, remark
+
+
+    def __iir_coefficients(self, tree):
+        if not _have_scipy:
+            raise Error("error: scipy not installed")
+
+        uu = str(uuid.uuid1())
+        resp = self.insert_responsePAZ(name=uu, publicID=uu)
+        inUnit = None
+        outUnit = None
+        remark = None
+        numerators = []
+        denominators = []
+
+        for e in tree:
+            if e.tag == ns + "CfTransferFunctionType":
+                if e.text == "ANALOG (RADIANS/SECOND)":
+                    resp.type = 'A'
+
+                elif e.text == "ANALOG (HERTZ)":
+                    resp.type = 'B'
+
+                elif e.text == "DIGITAL":
+                    resp.type = 'D'
+
+            elif e.tag == ns + "Numerator":
+                numerators.append(float(e.text))
+
+            elif e.tag == ns + "Denominator":
+                denominators.append(float(e.text))
+
+            elif e.tag == ns + "InputUnits":
+                for e1 in e:
+                    if e1.tag == ns + "Name":
+                        inUnit = e1.text
+
+                    if e1.tag == ns + "Description":
+                        remark = json.dumps({"unit": e1.text})
+
+            elif e.tag == ns + "OutputUnits":
+                for e1 in e:
+                    if e1.tag == ns + "Name":
+                        outUnit = e1.text
+
+        if resp.type == 'D' and outUnit != "COUNTS":
+            raise Error("error: unexpected output unit: %s, expected: COUNTS" % outUnit)
+
+        if resp.type != 'D':
+            # not supported by evalresp, order of coefficients is not clear
+            raise Error("error: unsupported transfer function type")
+
+        # tested with evalresp V4.0.6
+        numerators = scipy.trim_zeros(numerators, 'b') if numerators else [1.0]
+        denominators = scipy.trim_zeros(denominators, 'b') if numerators else [1.0]
+
+        d = len(numerators) - len(denominators)
+
+        if d > 0:
+            denominators += d * [0.0]
+
+        elif d < 0:
+            numerators += -d * [0.0]
+
+        try:
+            zeros, poles, gain = scipy.signal.tf2zpk(numerators, denominators)
+
+        except Exception as ex:
+            raise Error("error: %s" % ex)
+
+        resp.normalizationFactor = gain
+        resp.numberOfPoles = len(poles)
+        resp.numberOfZeros = len(zeros)
+        resp.poles = " ".join("(%s,%s)" % (c.real, c.imag) for c in poles)
+        resp.zeros = " ".join("(%s,%s)" % (c.real, c.imag) for c in zeros)
+        return resp, inUnit, outUnit, remark
 
 
     def __fir(self, tree):
@@ -175,8 +274,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         resp = self.insert_responseFIR(name=uu, publicID=uu)
         inUnit = None
         outUnit = None
-        lowFreq = None
-        highFreq = None
+        remark = None
         coeff = []
 
         for e in tree:
@@ -198,25 +296,24 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     if e1.tag == ns + "Name":
                         inUnit = e1.text
 
+                    if e1.tag == ns + "Description":
+                        remark = json.dumps({"unit": e1.text})
+
             elif e.tag == ns + "OutputUnits":
                 for e1 in e:
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
 
         if outUnit != "COUNTS":
-            raise Error("unexpected output unit: %s, expected: COUNTS" % outUnit)
+            raise Error("error: unexpected output unit: %s, expected: COUNTS" % outUnit)
 
         if resp.symmetry == 'A':
             symmetry, ncoeff = _optimize_fir(coeff)
-            resp.symmetry = symmetry
-            resp.numberOfCoefficients = ncoeff
-            resp.coefficients = " ".join(coeff[:ncoeff])
+            del coeff[ncoeff:]
 
-        else:
-            resp.numberOfCoefficients = len(coeff)
-            resp.coefficients = " ".join(coeff)
-
-        return resp, inUnit, outUnit, lowFreq, highFreq
+        resp.numberOfCoefficients = len(coeff)
+        resp.coefficients = " ".join(coeff)
+        return resp, inUnit, outUnit, remark
 
 
     def __polynomial(self, tree):
@@ -224,6 +321,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         resp = self.insert_responsePolynomial(name=uu, publicID=uu)
         inUnit = None
         outUnit = None
+        remark = None
         lowFreq = None
         highFreq = None
         coeff = []
@@ -256,6 +354,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     if e1.tag == ns + "Name":
                         inUnit = e1.text
 
+                    if e1.tag == ns + "Description":
+                        remark = json.dumps({"unit": e1.text})
+
             elif e.tag == ns + "OutputUnits":
                 for e1 in e:
                     if e1.tag == ns + "Name":
@@ -264,13 +365,14 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         resp.frequencyUnit = 'B'
         resp.numberOfCoefficients = len(coeff)
         resp.coefficients = " ".join(coeff)
-        return resp, inUnit, outUnit, lowFreq, highFreq
+        return resp, inUnit, outUnit, remark, lowFreq, highFreq
 
 
     def __stage(self, tree):
         resp = None
         inUnit = None
         outUnit = None
+        remark = None
         lowFreq = None
         highFreq = None
         inputSampleRate = 0.0
@@ -279,19 +381,26 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         correction = 0.0
         gain = 1.0
         gainFrequency = 0.0
+        converted = False
+        extraDecimation = None
 
         for e in tree:
             if e.tag == ns + "PolesZeros":
-                resp, inUnit, outUnit, lowFreq, highFreq = self.__poles_zeros(e)
+                resp, inUnit, outUnit, remark = self.__poles_zeros(e)
 
             elif e.tag == ns + "Coefficients":
-                resp, inUnit, outUnit, lowFreq, highFreq = self.__coefficients(e)
+                try:
+                    resp, inUnit, outUnit, remark = self.__fir_coefficients(e)
+
+                except Fallback:
+                    resp, inUnit, outUnit, remark = self.__iir_coefficients(e)
+                    converted = True
 
             elif e.tag == ns + "FIR":
-                resp, inUnit, outUnit, lowFreq, highFreq = self.__fir(e)
+                resp, inUnit, outUnit, remark = self.__fir(e)
 
             elif e.tag == ns + "Polynomial":
-                resp, inUnit, outUnit, lowFreq, highFreq = self.__polynomial(e)
+                resp, inUnit, outUnit, remark, lowFreq, highFreq = self.__polynomial(e)
 
             elif e.tag == ns + "Decimation":
                 for e1 in e:
@@ -316,20 +425,33 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                         gainFrequency = float(e1.text)
 
         if resp is not None:
-            if _is_fir_response(resp):
+            resp.gain = gain
+
+            if hasattr(resp, "gainFrequency"):
+                resp.gainFrequency = gainFrequency
+
+            if hasattr(resp, "decimationFactor"):
                 resp.decimationFactor = decimationFactor
                 resp.delay = delay * inputSampleRate
                 resp.correction = correction * inputSampleRate
 
-            elif decimationFactor != 1:
-                raise Error("decimation not supported by filter")
+            elif _is_paz_response(resp) and resp.type == 'D' and decimationFactor != 1:
+                # add separate decimation stage
+                uu = str(uuid.uuid1())
+                fir = self.insert_responseFIR(name=uu, publicID=uu)
+                fir.decimationFactor = decimationFactor
+                fir.delay = delay * inputSampleRate
+                fir.correction = correction * inputSampleRate
+                fir.gain = 1.0
+                fir.symmetry = 'A'
+                fir.numberOfCoefficients = 1
+                fir.coefficients = "1.0"
+                extraDecimation = fir.publicID
 
-            else:
-                resp.gainFrequency = gainFrequency
+            if converted:
+                resp.normalizationFrequency = gainFrequency
 
-            resp.gain = gain
-
-        return resp, inUnit, outUnit, lowFreq, highFreq, gain
+        return resp, inUnit, outUnit, remark, lowFreq, highFreq, gain, converted, extraDecimation
 
 
     def __process_response(self, tree, cha, sensor, logger):
@@ -351,10 +473,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                                 cha.gainUnit = e2.text
 
             elif e.tag == ns + "InstrumentPolynomial":
-                resp, inUnit, outUnit, lowFreq, highFreq = self.__polynomial(e)
+                resp, inUnit, outUnit, remark, lowFreq, highFreq = self.__polynomial(e)
                 resp.gain = 1.0
                 resp.gainFrequency = 0.0
-                fallback = (resp, inUnit, outUnit, lowFreq, highFreq, 1.0)
+                fallback = (resp, inUnit, outUnit, remark, lowFreq, highFreq, 1.0, False, None)
                 cha.gainUnit = inUnit
 
             elif e.tag == ns + "Stage":
@@ -376,16 +498,20 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
         for i in range(1, len(stages)+1):
             try:
-                resp, inUnit, outUnit, lowFreq, highFreq, gain = stages[i]
+                resp, inUnit, outUnit, remark, lowFreq, highFreq, gain, converted, extraDecimation = stages[i]
 
             except KeyError:
-                raise Error("%s: missing stage %d" % (_cha_id(cha), i))
+                raise Error("%s: error: missing stage %d" % (_cha_id(cha), i))
+
+            if converted:
+                logs.warning("%s stage %d: warning: coefficients converted to PAZ" % (_cha_id(cha), i))
 
             if i == 1:
                 sensor.unit = inUnit
+                sensor.remark = remark
 
                 if resp is None:
-                    raise Error("%s: missing stage 1 response" % _cha_id(cha))
+                    raise Error("%s: error: missing stage 1 response" % _cha_id(cha))
 
                 elif _is_fir_response(resp) or (_is_paz_response(resp) and resp.type == 'D'):
                     # add dummy sensor to digital input
@@ -415,9 +541,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 continue
 
             elif inUnit != unit:
-                raise Error("%s stage %d: unexpected input unit: %s, expected: %s" % (_cha_id(cha), i, inUnit, unit))
+                raise Error("%s stage %d: error: unexpected input unit: %s, expected: %s" % (_cha_id(cha), i, inUnit, unit))
 
-            if _is_fir_response(resp) and (resp.numberOfCoefficients == 0 or (resp.numberOfCoefficients == 1 and float(resp.coefficients) == 1.0)):
+            if _is_fir_response(resp) and (resp.numberOfCoefficients == 0 or (resp.numberOfCoefficients == 1 and float(resp.coefficients) == 1.0 and resp.decimationFactor == 1)):
                 logger.gain *= resp.gain
                 self.remove_responseFIR(resp.name)
 
@@ -430,6 +556,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             else:
                 afc.append(resp.publicID)
+
+            if extraDecimation:
+                logs.warning("%s stage %d: warning: adding extra decimation stage" % (_cha_id(cha), i))
+                dfc.append(extraDecimation)
 
             unit = outUnit
 
@@ -555,7 +685,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     self.__process_response(e, cha, sensor, logger)
 
                 except Error as ex:
-                    logs.error(ex)
+                    logs.error(str(ex))
 
         if cha.sampleRateDenominator and clockDrift is not None:
             logger.maxClockDrift = clockDrift * cha.sampleRateNumerator / cha.sampleRateDenominator
@@ -598,7 +728,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             elif e.tag == ns + "Site":
                 for e1 in e:
                     if e1.tag == ns + "Name":
-                        sta.description = e1.text.encode('utf-8')
+                        sta.description = e1.text.encode('utf-8') if e1.text else code
 
                     elif e1.tag == ns + "Town":
                         sta.place = e1.text
@@ -649,7 +779,8 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             elif e.tag == ns + "Network":
                 if 'startDate' not in e.attrib:
-                    raise Error("network %s is missing startDate" % e.attrib['code'])
+                    logs.error("error: network %s is missing startDate" % e.attrib['code'])
+                    continue
 
                 self.__process_network(e)
 
