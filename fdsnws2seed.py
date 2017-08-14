@@ -19,7 +19,7 @@ import shutil
 import dateutil.parser
 from seiscomp import fdsnxml, mseedlite, fseed, logs
 
-VERSION = "2017.225"
+VERSION = "2017.226"
 ORGANIZATION = "EIDA"
 
 
@@ -122,6 +122,10 @@ def main():
         param2.append(opt_str)
         param2.append(value)
 
+    def add_param12(option, opt_str, value, parser):
+        add_param1(option, opt_str, value, parser)
+        add_param2(option, opt_str, value, parser)
+
     def add_param(option, opt_str, value, parser):
         add_param0(option, opt_str, value, parser)
         add_param1(option, opt_str, value, parser)
@@ -146,27 +150,27 @@ def main():
                       help="URL of routing service (default %default)")
 
     parser.add_option("-N", "--network", type="string", action="callback",
-                      callback=add_param,
+                      callback=add_param12,
                       help="network code or pattern")
 
     parser.add_option("-S", "--station", type="string", action="callback",
-                      callback=add_param,
+                      callback=add_param12,
                       help="station code or pattern")
 
     parser.add_option("-L", "--location", type="string", action="callback",
-                      callback=add_param,
+                      callback=add_param12,
                       help="location code or pattern")
 
     parser.add_option("-C", "--channel", type="string", action="callback",
-                      callback=add_param,
+                      callback=add_param12,
                       help="channel code or pattern")
 
     parser.add_option("-s", "--starttime", type="string", action="callback",
-                      callback=add_param,
+                      callback=add_param12,
                       help="start time")
 
     parser.add_option("-e", "--endtime", type="string", action="callback",
-                      callback=add_param,
+                      callback=add_param12,
                       help="end time")
 
     parser.add_option("-t", "--timeout", type="int", action="callback",
@@ -194,15 +198,15 @@ def main():
                       help="file that contains the auth token")
 
     parser.add_option("-p", "--post-file", type="string", action="callback",
-                      callback=add_param,
+                      callback=add_param12,
                       help="request file in FDSNWS POST format")
 
     parser.add_option("-f", "--arclink-file", type="string", action="callback",
-                      callback=add_param,
+                      callback=add_param12,
                       help="request file in ArcLink format")
 
     parser.add_option("-b", "--breqfast-file", type="string", action="callback",
-                      callback=add_param,
+                      callback=add_param12,
                       help="request file in breq_fast format")
 
     parser.add_option("-d", "--dataless", action="store_true", default=False,
