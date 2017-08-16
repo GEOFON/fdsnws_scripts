@@ -1108,7 +1108,9 @@ class _FormatDict(object):
         
         "mseed0": ("ASCII console log", 80, ""),
 
-        "ASCII": ("ASCII console log", 80, "") }
+        "ASCII": ("ASCII console log", 80, ""),
+
+        "unknown": ("unknown", 99, "") }
 
     def __init__(self):
         self.__num = 0
@@ -1116,17 +1118,24 @@ class _FormatDict(object):
         self.__blk = []
 
     def lookup(self, name):
-        k = self.__used.get(name)
-        if k is not None:
-            return k
-            
+        if not name:
+            name = "unknown"
+
+        try:
+            return self.__used[name]
+
+        except KeyError:
+            pass
+
         self.__num += 1
         k = self.__num
         self.__used[name] = k
 
-        f = self.__formats.get(name)
-        if f is None:
-            raise SEEDError, "unknown data format: " + name
+        try:
+            f = self.__formats[name]
+
+        except KeyError:
+            f = (name, 99, "")
 
         b = _Blockette30(name = f[0], key = k, family = f[1], ddl = f[2:])
         self.__blk.append(b)
@@ -1156,21 +1165,28 @@ class _UnitDict(object):
         self.__blk = []
 
     def lookup(self, name, remark=None):
-        k = self.__used.get(name)
-        if k is not None:
-            return k
-            
+        if not name:
+            name = "unknown"
+
+        try:
+            return self.__used[(name, remark)]
+
+        except KeyError:
+            pass
+
         self.__num += 1
         k = self.__num
-        self.__used[name] = k
+        self.__used[(name, remark)] = k
 
-        desc = self.__units.get(name)
-        if desc is None:
+        try:
+            desc = json.loads(remark)['unit']
+
+        except Exception:
             try:
-                desc = json.loads(remark)['unit']
+                desc = self.__units[name]
 
-            except Exception:
-                raise SEEDError, "unknown unit: " + name
+            except KeyError:
+                desc = name
 
         b = _Blockette34(key = k, name = name, desc = desc)
         self.__blk.append(b)
@@ -1264,12 +1280,11 @@ class _ResponseContainer(object):
         (x1, x2, sens, sens_freq) = self.__fac._lookup_sensor(name,
             dev_id, compn)
 
-        if sens != 0.0:
+        if x2 is not None:
             self._add_stage(x1, x2)
 
         else:
             self._add_stage(x1)
-            sens = 1.0
 
         return (sens, sens_freq)
 
@@ -1451,6 +1466,9 @@ class _Response4xFactory(object):
             gain = resp.gain
             dev_id = None
             compn = None
+
+        if gain == 0.0 or gain is None or resp.gainFrequency is None:
+            return (k1, None, 1.0, 0.0)
         
         k2 = self.__used_sensor_calib.get((name, dev_id, compn))
         if k2 is not None:
@@ -1661,13 +1679,23 @@ class _Response4xFactory(object):
             npoles = resp_paz.numberOfPoles,
             poles = resp_paz.poles)
 
-        b2 = _Blockette47(key = k2,
-            name = "DD" + name,
-            input_rate = input_rate,
-            deci_fac = 1,
-            deci_offset = 0,
-            delay = 0,
-            correction = 0)
+        try:
+            b2 = _Blockette47(key = k2,
+                name = "DD" + name,
+                input_rate = input_rate,
+                deci_fac = resp_paz.decimationFactor,
+                deci_offset = 0,
+                delay = resp_paz.delay / input_rate,
+                correction = resp_paz.correction / input_rate)
+
+        except AttributeError:
+            b2 = _Blockette47(key = k2,
+                name = "DD" + name,
+                input_rate = input_rate,
+                deci_fac = 1,
+                deci_offset = 0,
+                delay = 0,
+                correction = 0)
 
         b3 = _Blockette48(key = k3,
             name = "GD" + name,
@@ -1832,6 +1860,9 @@ class _Response5xFactory(object):
             dev_id = None
             compn = None
         
+        if gain == 0.0 or gain is None or resp.gainFrequency is None:
+            return (b1, None, 1.0, 0.0)
+
         b2 = _Blockette58(gain = gain,
             gain_freq = resp.gainFrequency) #,
             #calib_list = calib_list)
@@ -1954,11 +1985,19 @@ class _Response5xFactory(object):
             npoles = resp_paz.numberOfPoles,
             poles = resp_paz.poles)
 
-        b2 = _Blockette57(input_rate = input_rate,
-            deci_fac = 1,
-            deci_offset = 0,
-            delay = 0,
-            correction = 0)
+        try:
+            b2 = _Blockette57(input_rate = input_rate,
+                deci_fac = resp_paz.decimationFactor,
+                deci_offset = 0,
+                delay = resp_paz.delay / input_rate,
+                correction = resp_paz.correction / input_rate)
+
+        except AttributeError:
+            b2 = _Blockette57(input_rate = input_rate,
+                deci_fac = 1,
+                deci_offset = 0,
+                delay = 0,
+                correction = 0)
 
         b3 = _Blockette58(gain = resp_paz.gain,
             gain_freq = resp_paz.gainFrequency)

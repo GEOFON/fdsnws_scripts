@@ -379,8 +379,8 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         decimationFactor = 1
         delay = 0.0
         correction = 0.0
-        gain = 1.0
-        gainFrequency = 0.0
+        gain = None
+        gainFrequency = None
         converted = False
         extraDecimation = None
 
@@ -537,7 +537,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     continue
 
             elif resp is None:
-                logger.gain *= gain
+                if gain is not None:
+                    logger.gain *= gain
+
                 continue
 
             elif inUnit != unit:
@@ -704,6 +706,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             elif e.tag == ns + "ClockDrift":
                 clockDrift = float(e.text)
+
+            elif e.tag == ns + "StorageFormat":
+                cha.format = e.text
 
             elif e.tag == ns + "Response":
                 try:
