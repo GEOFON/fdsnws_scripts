@@ -504,7 +504,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 raise Error("%s: error: missing stage %d" % (_cha_id(cha), i))
 
             if converted:
-                logs.warning("%s stage %d: warning: coefficients converted to PAZ" % (_cha_id(cha), i))
+                logs.notice("%s stage %d: notice: coefficients converted to PAZ" % (_cha_id(cha), i))
 
             if i == 1:
                 sensor.unit = inUnit
@@ -558,7 +558,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 afc.append(resp.publicID)
 
             if extraDecimation:
-                logs.warning("%s stage %d: warning: adding extra decimation stage" % (_cha_id(cha), i))
+                logs.notice("%s stage %d: notice: adding extra decimation stage" % (_cha_id(cha), i))
                 dfc.append(extraDecimation)
 
             unit = outUnit
@@ -608,13 +608,28 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
         for e in tree:
             if e.tag == ns + "Latitude":
-                loc.latitude = float(e.text)
+                latitude = float(e.text)
+
+                if loc.latitude is not None and loc.latitude != latitude:
+                    logs.warning("%s: warning: conflicting latitude: %s vs. %s" % (_cha_id(cha), loc.latitude, latitude))
+
+                loc.latitude = latitude
 
             elif e.tag == ns + "Longitude":
-                loc.longitude = float(e.text)
+                longitude = float(e.text)
+
+                if loc.longitude is not None and loc.longitude != longitude:
+                    logs.warning("%s: warning: conflicting longitude: %s vs. %s" % (_cha_id(cha), loc.longitude, longitude))
+
+                loc.longitude = longitude
 
             elif e.tag == ns + "Elevation":
-                loc.elevation = float(e.text)
+                elevation = float(e.text)
+
+                if loc.elevation is not None and loc.elevation != elevation:
+                    logs.warning("%s: warning: conflicting elevation: %s vs. %s" % (_cha_id(cha), loc.elevation, elevation))
+
+                loc.elevation = elevation
 
             elif e.tag == ns + "Depth":
                 cha.depth = float(e.text)
@@ -656,8 +671,14 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             elif e.tag == ns + "Sensor":
                 for e1 in e:
-                    if e1.tag == ns + "Type":
+                    if e1.tag == ns + "Description":
                         sensor.description = e1.text.encode('utf-8')
+
+                    elif e1.tag == ns + "Type":
+                        sensor.type = e1.text.encode('utf-8')
+
+                        if not sensor.description:
+                            sensor.description = sensor.type
 
                     elif e1.tag == ns + "Model":
                         sensor.model = e1.text
@@ -667,8 +688,12 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             elif e.tag == ns + "DataLogger":
                 for e1 in e:
-                    if e1.tag == ns + "Type":
+                    if e1.tag == ns + "Description":
                         logger.description = e1.text.encode('utf-8')
+
+                    elif e1.tag == ns + "Type":
+                        if not logger.description:
+                            logger.description = e1.text.encode('utf-8')
 
                     elif e1.tag == ns + "Model":
                         logger.digitizerModel = e1.text
