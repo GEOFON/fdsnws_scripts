@@ -24,6 +24,10 @@ except ImportError:
 ns = "{http://www.fdsn.org/xml/station/1}"
 
 
+def _uuid():
+    return str(uuid.uuid1())
+
+
 def _cha_id(cha):
     loc = cha.mySensorLocation
     sta = loc.myStation
@@ -72,7 +76,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
 
     def __poles_zeros(self, tree):
-        uu = str(uuid.uuid1())
+        uu = _uuid()
         resp = self.insert_responsePAZ(name=uu, publicID=uu)
         inUnit = None
         outUnit = None
@@ -136,9 +140,6 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
 
-        if resp.type == 'D' and outUnit != "COUNTS":
-            raise Error("error: unexpected output unit: %s, expected: COUNTS" % outUnit)
-
         resp.numberOfPoles = len(poles)
         resp.numberOfZeros = len(zeros)
         resp.poles = " ".join(poles)
@@ -180,13 +181,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
 
-        if outUnit != "COUNTS":
-            raise Error("error: unexpected output unit: %s, expected: COUNTS" % outUnit)
-
         symmetry, ncoeff = _optimize_fir(coeff)
         del coeff[ncoeff:]
 
-        uu = str(uuid.uuid1())
+        uu = _uuid()
         resp = self.insert_responseFIR(name=uu, publicID=uu)
         resp.symmetry = symmetry
         resp.numberOfCoefficients = len(coeff)
@@ -198,7 +196,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         if not _have_scipy:
             raise Error("error: scipy not installed")
 
-        uu = str(uuid.uuid1())
+        uu = _uuid()
         resp = self.insert_responsePAZ(name=uu, publicID=uu)
         inUnit = None
         outUnit = None
@@ -236,9 +234,6 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
 
-        if resp.type == 'D' and outUnit != "COUNTS":
-            raise Error("error: unexpected output unit: %s, expected: COUNTS" % outUnit)
-
         if resp.type != 'D':
             # not supported by evalresp, order of coefficients is not clear
             raise Error("error: unsupported transfer function type")
@@ -270,7 +265,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
 
     def __fir(self, tree):
-        uu = str(uuid.uuid1())
+        uu = _uuid()
         resp = self.insert_responseFIR(name=uu, publicID=uu)
         inUnit = None
         outUnit = None
@@ -304,9 +299,6 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     if e1.tag == ns + "Name":
                         outUnit = e1.text
 
-        if outUnit != "COUNTS":
-            raise Error("error: unexpected output unit: %s, expected: COUNTS" % outUnit)
-
         if resp.symmetry == 'A':
             symmetry, ncoeff = _optimize_fir(coeff)
             del coeff[ncoeff:]
@@ -317,7 +309,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
 
     def __polynomial(self, tree):
-        uu = str(uuid.uuid1())
+        uu = _uuid()
         resp = self.insert_responsePolynomial(name=uu, publicID=uu)
         inUnit = None
         outUnit = None
@@ -437,7 +429,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             elif _is_paz_response(resp) and resp.type == 'D' and decimationFactor != 1:
                 # add separate decimation stage
-                uu = str(uuid.uuid1())
+                uu = _uuid()
                 fir = self.insert_responseFIR(name=uu, publicID=uu)
                 fir.decimationFactor = decimationFactor
                 fir.delay = delay * inputSampleRate
@@ -515,7 +507,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
                 elif _is_fir_response(resp) or (_is_paz_response(resp) and resp.type == 'D'):
                     # add dummy sensor to digital input
-                    uu = str(uuid.uuid1())
+                    uu = _uuid()
                     paz = self.insert_responsePAZ(name=uu, publicID=uu)
                     paz.type = 'A'
                     paz.gain = 1.0
@@ -556,8 +548,11 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
             elif _is_fir_response(resp) or (_is_paz_response(resp) and resp.type == 'D'):
                 dfc.append(resp.publicID)
 
-            else:
+            elif not dfc:
                 afc.append(resp.publicID)
+
+            else:
+                raise Error("%s stage %d: error: analogue stage after digital" % (_cha_id(cha), i))
 
             if extraDecimation:
                 logs.notice("%s stage %d: notice: adding extra decimation stage" % (_cha_id(cha), i))
@@ -591,7 +586,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                 loc.end = end
 
         except KeyError:
-            loc = sta.insert_sensorLocation(locationCode, start, end=end, publicID=uuid.uuid1())
+            loc = sta.insert_sensorLocation(locationCode, start, end=end, publicID=_uuid())
             locs[(locationCode, start)] = loc
 
         cha = loc.insert_stream(code, start, end=end)
@@ -599,9 +594,9 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
         cha.shared = True
         cha.format = "steim2"
         cha.flags = ""
-        cha.sensor = str(uuid.uuid1())
+        cha.sensor = _uuid()
         cha.sensorChannel = 0
-        cha.datalogger = str(uuid.uuid1())
+        cha.datalogger = _uuid()
         cha.dataloggerChannel = 0
         clockDrift = None
 
@@ -727,7 +722,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
     def __process_station(self, tree, net):
         code = tree.attrib['code']
         start = dateutil.parser.parse(tree.attrib['startDate']).replace(tzinfo=None)
-        sta = net.insert_station(code, start, publicID=uuid.uuid1())
+        sta = net.insert_station(code, start, publicID=_uuid())
 
         try:
             sta.end = dateutil.parser.parse(tree.attrib['endDate']).replace(tzinfo=None)
@@ -773,7 +768,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
     def __process_network(self, tree):
         code = tree.attrib['code']
         start = dateutil.parser.parse(tree.attrib['startDate']).replace(tzinfo=None)
-        net = self.insert_network(code, start, publicID=uuid.uuid1())
+        net = self.insert_network(code, start, publicID=_uuid())
 
         try:
             net.end = dateutil.parser.parse(tree.attrib['endDate']).replace(tzinfo=None)
@@ -795,6 +790,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
             elif e.tag == ns + "Station":
                 self.__process_station(e, net)
+
 
     def load_fdsnxml(self, src):
         try:
