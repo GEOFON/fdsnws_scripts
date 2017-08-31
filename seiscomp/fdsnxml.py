@@ -240,7 +240,7 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
 
         # tested with evalresp V4.0.6
         numerators = scipy.trim_zeros(numerators, 'b') if numerators else [1.0]
-        denominators = scipy.trim_zeros(denominators, 'b') if numerators else [1.0]
+        denominators = scipy.trim_zeros(denominators, 'b') if denominators else [1.0]
 
         d = len(numerators) - len(denominators)
 
