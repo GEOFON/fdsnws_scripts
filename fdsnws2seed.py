@@ -19,7 +19,7 @@ import shutil
 import dateutil.parser
 from seiscomp import fdsnxml, mseedlite, fseed, logs
 
-VERSION = "2017.230"
+VERSION = "2017.255"
 ORGANIZATION = "EIDA"
 
 
@@ -292,14 +292,18 @@ def main():
             logs.error("error running fdsnws_fetch")
             return 1
 
-        for rec in mseedlite.Input(proc.stdout):
-            try:
-                seed_volume.add_data(rec)
+        try:
+            for rec in mseedlite.Input(proc.stdout):
+                try:
+                    seed_volume.add_data(rec)
 
-            except fseed.SEEDError as e:
-                logs.warning("%s.%s.%s.%s.%s: %s" % (rec.net.code, rec.sta.code, rec.loc.code, rec.cha.code, rec.cha.start.isoformat(), e))
+                except fseed.SEEDError as e:
+                    logs.warning("%s.%s.%s.%s.%s: %s" % (rec.net.code, rec.sta.code, rec.loc.code, rec.cha.code, rec.cha.start.isoformat(), e))
 
-            nets.add((rec.net, rec.begin_time.year))
+                nets.add((rec.net, rec.begin_time.year))
+
+        except mseedlite.MseedError as e:
+            logs.error(str(e))
 
         proc.stdout.close()
         proc.wait()

@@ -20,7 +20,7 @@ import dateutil.parser
 
 from seiscomp import mseedlite, logs
 
-VERSION = "2017.223"
+VERSION = "2017.255"
 
 
 class Error(Exception):
@@ -379,31 +379,38 @@ def main():
                 logs.error("error running fdsnws_fetch")
                 return 1
 
-            for rec in mseedlite.Input(proc.stdout):
-                try:
-                    ts = timespan[(rec.net, rec.sta, rec.loc, rec.cha)]
+            got_data = False
 
-                except KeyError:
-                    logs.warning("unexpected data: %s.%s.%s.%s" % (rec.net, rec.sta, rec.loc, rec.cha))
-                    continue
+            try:
+                for rec in mseedlite.Input(proc.stdout):
+                    try:
+                        ts = timespan[(rec.net, rec.sta, rec.loc, rec.cha)]
 
-                if rec.end_time <= ts.current:
-                    continue
+                    except KeyError:
+                        logs.warning("unexpected data: %s.%s.%s.%s" % (rec.net, rec.sta, rec.loc, rec.cha))
+                        continue
 
-                sds_dir = "%s/%d/%s/%s/%s.D" \
-                          % (options.output_dir, rec.begin_time.year, rec.net, rec.sta, rec.cha)
+                    if rec.end_time <= ts.current:
+                        continue
 
-                sds_file = "%s.%s.%s.%s.D.%s" \
-                          % (rec.net, rec.sta, rec.loc, rec.cha, rec.begin_time.strftime('%Y.%j'))
+                    sds_dir = "%s/%d/%s/%s/%s.D" \
+                              % (options.output_dir, rec.begin_time.year, rec.net, rec.sta, rec.cha)
 
-                if not os.path.exists(sds_dir):
-                    os.makedirs(sds_dir)
+                    sds_file = "%s.%s.%s.%s.D.%s" \
+                              % (rec.net, rec.sta, rec.loc, rec.cha, rec.begin_time.strftime('%Y.%j'))
 
-                with open(sds_dir + '/' + sds_file, 'ab') as fd:
-                    fd.write(rec.header + rec.data)
+                    if not os.path.exists(sds_dir):
+                        os.makedirs(sds_dir)
 
-                ts.current = rec.end_time
-                nets.add((rec.net, rec.begin_time.year))
+                    with open(sds_dir + '/' + sds_file, 'ab') as fd:
+                        fd.write(rec.header + rec.data)
+
+                    ts.current = rec.end_time
+                    nets.add((rec.net, rec.begin_time.year))
+                    got_data = True
+
+            except mseedlite.MseedError as e:
+                logs.error(str(e))
 
             proc.stdout.close()
             proc.wait()
@@ -413,14 +420,17 @@ def main():
                 return 1
 
             for ((net, sta, loc, cha), ts) in ts_used:
-                te = min(ts.end, ts.start + datetime.timedelta(minutes=options.max_timespan))
-                ts.start = ts.current
+                if not got_data:
+                    # no progress, skip to next segment
+                    ts.start += datetime.timedelta(minutes=options.max_timespan)
 
-                if te >= ts.end:
+                else:
+                    # continue from current position
+                    ts.start = ts.current
+
+                if ts.start >= ts.end:
+                    # timespan completed
                     del timespan[(net, sta, loc, cha)]
-
-                elif ts.start < te:
-                    ts.start = te
 
         if nets and not options.no_citation:
             logs.info("retrieving network citation info")
