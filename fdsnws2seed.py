@@ -19,15 +19,18 @@ import shutil
 import dateutil.parser
 from seiscomp import fdsnxml, mseedlite, fseed, logs
 
-VERSION = "2017.255"
+VERSION = "2017.270"
 ORGANIZATION = "EIDA"
 
 
-def exec_fetch(param, data, verbose):
+def exec_fetch(param, data, verbose, no_check):
     cmd = [sys.path[0] + "/fdsnws_fetch"]
 
     if verbose:
         cmd += ["-v"]
+
+    if no_check:
+        cmd += ["-Z"]
 
     if data is not None:
         cmd += ["-p", "/dev/stdin"]
@@ -54,7 +57,7 @@ def get_citation(nets, param, verbose):
         postdata = postdata.encode('utf-8')
 
     try:
-        proc = exec_fetch(param, postdata, verbose)
+        proc = exec_fetch(param, postdata, verbose, True)
 
     except OSError as e:
         logs.error(str(e))
@@ -221,11 +224,28 @@ def main():
     parser.add_option("-z", "--no-citation", action="store_true", default=False,
                       help="suppress network citation info")
 
+    parser.add_option("-Z", "--no-check", action="store_true", default=False,
+                      help="suppress checking received routes and data")
+
     (options, args) = parser.parse_args()
 
     if args or not options.output_file:
         parser.print_usage(sys.stderr)
         return 1
+
+    def log_alert(s):
+        if sys.stderr.isatty():
+            s = "\033[31m" + s + "\033[m"
+
+        sys.stderr.write(s + '\n')
+        sys.stderr.flush()
+
+    def log_notice(s):
+        if sys.stderr.isatty():
+            s = "\033[32m" + s + "\033[m"
+
+        sys.stderr.write(s + '\n')
+        sys.stderr.flush()
 
     def log_verbose(s):
         sys.stderr.write(s + '\n')
@@ -234,14 +254,14 @@ def main():
     def log_silent(s):
         pass
 
-    logs.error = log_verbose
-    logs.warning = log_verbose
-    logs.notice = log_verbose
+    logs.error = log_alert
+    logs.warning = log_alert
+    logs.notice = log_notice
     logs.info = (log_silent, log_verbose)[options.verbose]
     logs.debug = log_silent
 
     try:
-        proc = exec_fetch(param1, None, options.verbose)
+        proc = exec_fetch(param1, None, options.verbose, options.no_check)
 
     except OSError as e:
         logs.error(str(e))
@@ -285,7 +305,7 @@ def main():
 
     else:
         try:
-            proc = exec_fetch(param2, None, options.verbose)
+            proc = exec_fetch(param2, None, options.verbose, options.no_check)
 
         except OSError as e:
             logs.error(str(e))

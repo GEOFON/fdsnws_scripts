@@ -13,15 +13,32 @@ from __future__ import (absolute_import, division, print_function,
 import sys
 from seiscomp import fdsnxml, logs
 
-def log_print(s):
-    print(s, file=sys.stderr)
+def log_alert(s):
+    if sys.stderr.isatty():
+        s = "\033[31m" + s + "\033[m"
+
+    sys.stderr.write(s + '\n')
     sys.stderr.flush()
 
-logs.error = log_print
-logs.warning = log_print
-logs.notice = log_print
-logs.info = log_print
-logs.debug = lambda s: None
+def log_notice(s):
+    if sys.stderr.isatty():
+        s = "\033[32m" + s + "\033[m"
+
+    sys.stderr.write(s + '\n')
+    sys.stderr.flush()
+
+def log_verbose(s):
+    sys.stderr.write(s + '\n')
+    sys.stderr.flush()
+
+def log_silent(s):
+    pass
+
+logs.error = log_alert
+logs.warning = log_alert
+logs.notice = log_notice
+logs.info = log_verbose
+logs.debug = log_silent
 
 if len(sys.argv) not in (2, 3):
     logs.notice("Usage: %s input_file [output_file]" % sys.argv[0])
