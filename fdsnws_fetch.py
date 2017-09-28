@@ -100,7 +100,7 @@ except ImportError:
     import urllib.parse as urlparse
     import urllib.parse as urllib
 
-VERSION = "2017.270"
+VERSION = "2017.271"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -1013,7 +1013,7 @@ def route(url, cred, authdata, postdata, dest, chans_to_check, timeout,
                     break
 
         if chans1:
-            msg("did not receive routes to %s" % ", ".join(chans1))
+            msg("did not receive routes to %s" % ", ".join(sorted(chans1)))
 
     for t in threads:
         if running >= maxthreads:
@@ -1044,7 +1044,7 @@ def route(url, cred, authdata, postdata, dest, chans_to_check, timeout,
                     break
 
         if chans2:
-            msg("did not receive data from %s" % ", ".join(chans2))
+            msg("did not receive data from %s" % ", ".join(sorted(chans2)))
 
     return nets
 
