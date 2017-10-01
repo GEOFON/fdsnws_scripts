@@ -19,7 +19,7 @@ import shutil
 import dateutil.parser
 from seiscomp import fdsnxml, mseedlite, fseed, logs
 
-VERSION = "2017.270"
+VERSION = "2017.272"
 ORGANIZATION = "EIDA"
 
 
@@ -322,7 +322,7 @@ def main():
 
                 nets.add((rec.net, rec.begin_time.year))
 
-        except mseedlite.MseedError as e:
+        except mseedlite.MSeedError as e:
             logs.error(str(e))
 
         proc.stdout.close()

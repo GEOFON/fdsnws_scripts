@@ -20,7 +20,7 @@ import dateutil.parser
 
 from seiscomp import mseedlite, logs
 
-VERSION = "2017.270"
+VERSION = "2017.272"
 
 
 class Error(Exception):
@@ -91,6 +91,7 @@ def scan_sds(d, timespan, nets):
 
                 if ts.start < rec.end_time < ts.end:
                     ts.start = rec.end_time
+                    ts.current = rec.end_time
 
                 elif rec.end_time >= ts.end:
                     del timespan[nslc]
@@ -429,7 +430,7 @@ def main():
                     nets.add((rec.net, rec.begin_time.year))
                     got_data = True
 
-            except mseedlite.MseedError as e:
+            except mseedlite.MSeedError as e:
                 logs.error(str(e))
 
             proc.stdout.close()
