@@ -672,13 +672,16 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                         sensor.description = e1.text.encode('utf-8')
 
                     elif e1.tag == ns + "Type":
-                        sensor.type = e1.text.encode('utf-8')
+                        sensor.type = e1.text[:10]
 
                         if not sensor.description:
-                            sensor.description = sensor.type
+                            sensor.description = e1.text.encode('utf-8')
 
                     elif e1.tag == ns + "Model":
                         sensor.model = e1.text
+
+                    elif e1.tag == ns + "Manufacturer":
+                        sensor.manufacturer = e1.text
 
                     elif e1.tag == ns + "SerialNumber":
                         cha.sensorSerialNumber = e1.text
@@ -695,6 +698,10 @@ class Inventory(seiscomp.db.generic.inventory.Inventory):
                     elif e1.tag == ns + "Model":
                         logger.digitizerModel = e1.text
                         logger.recorderModel = e1.text
+
+                    elif e1.tag == ns + "Manufacturer":
+                        logger.digitizerManufacturer = e1.text
+                        logger.recorderManufacturer = e1.text
 
                     elif e1.tag == ns + "SerialNumber":
                         cha.dataloggerSerialNumber = e1.text
