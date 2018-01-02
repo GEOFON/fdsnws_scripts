@@ -11,7 +11,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import sys
-from seiscomp import fdsnxml, logs
+from fdsnwsscripts.seiscomp import fdsnxml, logs
 
 def log_alert(s):
     if sys.stderr.isatty():
@@ -34,24 +34,29 @@ def log_verbose(s):
 def log_silent(s):
     pass
 
-logs.error = log_alert
-logs.warning = log_alert
-logs.notice = log_notice
-logs.info = log_verbose
-logs.debug = log_silent
+def main():
+    logs.error = log_alert
+    logs.warning = log_alert
+    logs.notice = log_notice
+    logs.info = log_verbose
+    logs.debug = log_silent
 
-if len(sys.argv) not in (2, 3):
-    logs.notice("Usage: %s input_file [output_file]" % sys.argv[0])
-    sys.exit(1)
+    if len(sys.argv) not in (2, 3):
+        logs.notice("Usage: %s input_file [output_file]" % sys.argv[0])
+        return 1
 
-inv = fdsnxml.Inventory()
+    inv = fdsnxml.Inventory()
 
-try:
-    inv.load_fdsnxml(sys.argv[1])
+    try:
+        inv.load_fdsnxml(sys.argv[1])
 
-except fdsnxml.Error as e:
-    logs.error(str(e))
-    sys.exit(1)
+    except fdsnxml.Error as e:
+        logs.error(str(e))
+        return 1
 
-inv.save_xml(sys.argv[2] if len(sys.argv) == 3 else sys.stdout, instr=1)
+    inv.save_xml(sys.argv[2] if len(sys.argv) == 3 else sys.stdout, instr=1)
 
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -18,7 +18,7 @@ import random
 import subprocess
 import dateutil.parser
 
-from seiscomp import mseedlite, logs
+from fdsnwsscripts.seiscomp import mseedlite, logs
 
 VERSION = "2017.272"
 

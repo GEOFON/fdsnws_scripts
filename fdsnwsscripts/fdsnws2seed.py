@@ -11,13 +11,12 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import sys
-import os
 import optparse
 import subprocess
 import tempfile
 import shutil
 import dateutil.parser
-from seiscomp import fdsnxml, mseedlite, fseed, logs
+from fdsnwsscripts.seiscomp import fdsnxml, mseedlite, fseed, logs
 
 VERSION = "2017.272"
 ORGANIZATION = "EIDA"
