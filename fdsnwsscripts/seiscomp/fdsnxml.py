@@ -9,8 +9,8 @@ import json
 import math
 import datetime
 import dateutil.parser
-import seiscomp.db.generic.inventory
-from seiscomp import logs
+import fdsnwsscripts.seiscomp.db.generic.inventory
+from fdsnwsscripts.seiscomp import logs
 from xml.etree import cElementTree as ET
 
 try:
@@ -70,7 +70,7 @@ class Fallback(Exception):
     pass
 
 
-class Inventory(seiscomp.db.generic.inventory.Inventory):
+class Inventory(fdsnwsscripts.seiscomp.db.generic.inventory.Inventory):
     def __init__(self):
         super(Inventory, self).__init__()
 

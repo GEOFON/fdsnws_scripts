@@ -8,8 +8,8 @@
 #
 #import genwrap as _genwrap
 import datetime
-from seiscomp.db.xmlio import inventory as _xmlio
-from seiscomp.db import DBError
+from fdsnwsscripts.seiscomp.db.xmlio import inventory as _xmlio
+from fdsnwsscripts.seiscomp.db import DBError
 #
 #
 

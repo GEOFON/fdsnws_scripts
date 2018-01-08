@@ -14,10 +14,10 @@
 import re
 import json
 import datetime
-import mseedlite as mseed
+import fdsnwsscripts.seiscomp.mseedlite as mseed
 from tempfile import TemporaryFile
 from shutil import copyfileobj
-from seiscomp import logs
+from fdsnwsscripts.seiscomp import logs
 
 _RECLEN_EXP = 12
 

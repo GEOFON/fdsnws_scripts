@@ -12,7 +12,7 @@
 #*****************************************************************************
 
 import xmlwrap as _xmlwrap
-from seiscomp.db import DBError
+from fdsnwsscripts.seiscomp.db import DBError
 
 try:
     from xml.etree import cElementTree as ET  # Python 2.5?

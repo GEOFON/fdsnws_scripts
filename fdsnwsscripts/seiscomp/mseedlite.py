@@ -14,7 +14,7 @@
 import datetime
 import struct
 import cStringIO
-from seiscomp import logs
+from fdsnwsscripts.seiscomp import logs
 
 _FIXHEAD_LEN = 48
 _BLKHEAD_LEN = 4
