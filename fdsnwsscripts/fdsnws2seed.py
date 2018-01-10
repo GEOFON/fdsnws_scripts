@@ -18,7 +18,7 @@ import shutil
 import dateutil.parser
 from fdsnwsscripts.seiscomp import fdsnxml, mseedlite, fseed, logs
 
-VERSION = "2018.008"
+VERSION = "2018.010"
 ORGANIZATION = "EIDA"
 
 

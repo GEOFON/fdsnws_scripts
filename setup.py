@@ -23,13 +23,13 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='2018.8',
+    version='2018.10',
 
     description='fdsnwsscripts: Scripts for working with (EIDA) FDSN web services',
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/GEOFON/fdsnws_scripts',
+    url='https://geofon.gfz-potsdam.de/software/fdsnws_scripts',
 
     # Author details
     author='Andres Heinloo',

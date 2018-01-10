@@ -20,7 +20,7 @@ import dateutil.parser
 
 from fdsnwsscripts.seiscomp import mseedlite, logs
 
-VERSION = "2018.008"
+VERSION = "2018.010"
 
 
 class Error(Exception):

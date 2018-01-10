@@ -100,7 +100,7 @@ except ImportError:
     import urllib.parse as urlparse
     import urllib.parse as urllib
 
-VERSION = "2018.008"
+VERSION = "2018.010"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -497,6 +497,9 @@ def msg(s, verbose=3):
 
 
 def retry(urlopen, url, data, timeout, count, wait, verbose):
+    # force no gzip encoding, because urllib cannot handle this
+    url = urllib2.Request(url, None, {"Accept-Encoding": ""})
+
     n = 0
 
     while True:
