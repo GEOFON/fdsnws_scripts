@@ -20,7 +20,7 @@ import dateutil.parser
 
 from fdsnwsscripts.seiscomp import mseedlite, logs
 
-VERSION = "2018.010"
+VERSION = "2018.011"
 
 
 class Error(Exception):
@@ -344,7 +344,13 @@ def main():
                 continue
 
             starttime = max(dateutil.parser.parse(line.split('|')[15]), times['starttime'])
-            endtime = min(dateutil.parser.parse(line.split('|')[16]), times['endtime'])
+
+            try:
+                endtime = min(dateutil.parser.parse(line.split('|')[16]), times['endtime'])
+
+            except ValueError:
+                # dateutil.parser.parse('') now causes ValueError instead of current time
+                endtime = min(datetime.datetime.now(), times['endtime'])
 
             if starttime.tzinfo is not None:
                 starttime = starttime.astimezone(dateutil.tz.tzutc()).replace(tzinfo=None)
