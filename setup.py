@@ -23,7 +23,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='2018.11',
+    version='2019.252',
 
     description='fdsnwsscripts: Scripts for working with (EIDA) FDSN web services',
     long_description=long_description,
@@ -60,6 +60,7 @@ setup(
         # that you indicate whether you support Python 2, Python 3 or both.
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering'
     ],
 
@@ -81,7 +82,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=['python-dateutil'],
 
-    python_requires='>=2.7, <3',
+    python_requires='>=2.7',
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
     # for example:

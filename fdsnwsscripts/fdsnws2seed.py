@@ -11,6 +11,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import sys
+import os
 import optparse
 import subprocess
 import tempfile
@@ -18,12 +19,12 @@ import shutil
 import dateutil.parser
 from fdsnwsscripts.seiscomp import fdsnxml, mseedlite, fseed, logs
 
-VERSION = "2018.011"
+VERSION = "2019.252"
 ORGANIZATION = "EIDA"
 
 
 def exec_fetch(param, data, verbose, no_check):
-    cmd = [sys.path[0] + "/fdsnws_fetch"]
+    cmd = [os.path.dirname(os.path.realpath(sys.argv[0])) + "/fdsnws_fetch"]
 
     if verbose:
         cmd += ["-v"]

@@ -30,22 +30,22 @@ def print_exc():
 # seiscomp.logs.info = log_info
 
 def debug(s):
-    print s
+    _sys.stdout.write(s + "\n")
     _sys.stdout.flush()
 
 def info(s):
-    print s
+    _sys.stdout.write(s + "\n")
     _sys.stdout.flush()
 
 def notice(s):
-    print s
+    _sys.stdout.write(s + "\n")
     _sys.stdout.flush()
 
 def warning(s):
-    print s
+    _sys.stdout.write(s + "\n")
     _sys.stdout.flush()
 
 def error(s):
-    print s
+    _sys.stdout.write(s + "\n")
     _sys.stdout.flush()
 
