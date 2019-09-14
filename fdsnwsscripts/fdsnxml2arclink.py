@@ -54,7 +54,8 @@ def main():
         logs.error(str(e))
         return 1
 
-    inv.save_xml(sys.argv[2] if len(sys.argv) == 3 else sys.stdout, instr=1)
+    stdout = sys.stdout.buffer if hasattr(sys.stdout, "buffer") else sys.stdout
+    inv.save_xml(sys.argv[2] if len(sys.argv) == 3 else stdout, instr=1)
 
     return 0
 

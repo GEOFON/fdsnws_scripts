@@ -11,6 +11,12 @@
 # version. For more information, see http://www.gnu.org/
 #*****************************************************************************
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+try: str = unicode
+except NameError: pass
+
 import sys
 import re
 import json
@@ -132,7 +138,7 @@ def _mkseedpaz(nblk, nfld, npaz, s):
         except ValueError:
             raise SEEDError("blockette %d, field %d: error parsing PAZ at '%s'" % (nblk, nfld, s[pos:]))
 
-        for i in xrange(0, x):
+        for i in range(0, x):
             c += "%12.5E%12.5E 0.00000E-00 0.00000E-00" % (rv, iv)
 
         n += x
@@ -685,16 +691,16 @@ class _Blockette50(object):
 
         error = False
         if not isinstance(self.__stat_code, str):
-            print >> sys.stderr, "blockette 50 - station code not set or not of type string"
+            print("blockette 50 - station code not set or not of type string", file=sys.stderr)
             error = True
         if not isinstance(self.__latitude, float):
-            print >> sys.stderr, "blockette 50 - latitude not set or not of type float"
+            print("blockette 50 - latitude not set or not of type float", file=sys.stderr)
             error = True
         if not isinstance(self.__longitude, float):
-            print >> sys.stderr, "blockette 50 - longitude not set or not of type float"
+            print("blockette 50 - longitude not set or not of type float", file=sys.stderr)
             error = True
         if not isinstance(self.__elevation, float):
-            print >> sys.stderr, "blockette 50 - elevation not set or not of type float"
+            print("blockette 50 - elevation not set or not of type float", file=sys.stderr)
             error = True
 
         if error:
@@ -755,55 +761,55 @@ class _Blockette52(object):
 
         error = False
         if not isinstance(self.__loc_id, str):
-            print >> sys.stderr, "blockette 52 - location ID not set or not of type string"
+            print("blockette 52 - location ID not set or not of type string", file=sys.stderr)
             error = True
         if not isinstance(self.__chan_id, str):
-            print >> sys.stderr, "blockette 52 - channel ID not set or not of type string"
+            print("blockette 52 - channel ID not set or not of type string", file=sys.stderr)
             error = True
         if not isinstance(self.__len, int):
-            print >> sys.stderr, "blockette 52 - len not set or not of type int"
+            print("blockette 52 - len not set or not of type int", file=sys.stderr)
             error = True
         if not isinstance(self.__instr_id, int):
-            print >> sys.stderr, "blockette 52 - instrument ID not set or not of type integer"
+            print("blockette 52 - instrument ID not set or not of type integer", file=sys.stderr)
             error = True
         if not isinstance(self.__comment, str):
-            print >> sys.stderr, "blockette 52 - comment not set or not of type sting"
+            print("blockette 52 - comment not set or not of type sting", file=sys.stderr)
             error = True
         if not isinstance(self.__signal_units, int):
-            print >> sys.stderr, "blockette 52 - signal_units not set or not of type integer"
+            print("blockette 52 - signal_units not set or not of type integer", file=sys.stderr)
             error = True
         if not isinstance(self.__calibration_units, int):
-            print >> sys.stderr, "blockette 52 - calibration units not set or not of type integer"
+            print("blockette 52 - calibration units not set or not of type integer", file=sys.stderr)
             error = True
         if not isinstance(self.__latitude, float):
-            print >> sys.stderr, "blockette 52 - latitude not set or not of type float"
+            print("blockette 52 - latitude not set or not of type float", file=sys.stderr)
             error = True
         if not isinstance(self.__longitude, float):
-            print >> sys.stderr, "blockette 52 - longitude not set or not of type float"
+            print("blockette 52 - longitude not set or not of type float", file=sys.stderr)
             error = True
         if not isinstance(self.__elevation, float):
-            print >> sys.stderr, "blockette 52 - elevation not set or not of type float"
+            print("blockette 52 - elevation not set or not of type float", file=sys.stderr)
             error = True
         if not isinstance(self.__local_depth, float):
-            print >> sys.stderr, "Warning: blockette 52 - local depth not set or not of type float"
+            print("Warning: blockette 52 - local depth not set or not of type float", file=sys.stderr)
             error = True
         if not isinstance(self.__azimuth, float):
-            print >> sys.stderr, "blockette 52 - azimuth not set or not of type float"
+            print("blockette 52 - azimuth not set or not of type float", file=sys.stderr)
             error = True
         if not isinstance(self.__dip, float):
-            print >> sys.stderr, "blockette 52 - dip not set or not of type float"
+            print("blockette 52 - dip not set or not of type float", file=sys.stderr)
             error = True
         if not isinstance(self.__data_format, int):
-            print >> sys.stderr, "blockette 52 - data format not set or not of type integer"
+            print("blockette 52 - data format not set or not of type integer", file=sys.stderr)
             error = True
         if not isinstance(self.__record_length, int):
-            print >> sys.stderr, "blockette 52 - record length not set or not of type integer"
+            print("blockette 52 - record length not set or not of type integer", file=sys.stderr)
             error = True
         if not isinstance(self.__sample_rate, float):
-            print >> sys.stderr, "blockette 52 - sample rate not set or not of type float"
+            print("blockette 52 - sample rate not set or not of type float", file=sys.stderr)
             error = True
         if not isinstance(self.__clock_drift, float):
-            print >> sys.stderr, "Warning: blockette 52 - clock drift not set or not of type float"
+            print("Warning: blockette 52 - clock drift not set or not of type float", file=sys.stderr)
             error = True
 
         if error:
@@ -1622,7 +1628,7 @@ class _Response4xFactory(object):
             calib = None
 
         if calib is not None and len(calib) > 0:
-            calib_list = calib.items()
+            calib_list = list(calib.items())
             calib_list.sort()
             resp_name = "GS" + sensor.name + "_" + dev_id
             gain = calib_list[-1][1].gain
@@ -1817,7 +1823,7 @@ class _Response4xFactory(object):
             calib = None
 
         if calib is not None and len(calib) > 0:
-            calib_list = calib.items()
+            calib_list = list(calib.items())
             calib_list.sort()
             resp_name = "GL" + digi.name + "_" + dev_id
             gain = calib_list[-1][1].gain
@@ -2124,7 +2130,7 @@ class _Response5xFactory(object):
             calib = None
 
         if calib is not None and len(calib) > 0:
-            calib_list = calib.items()
+            calib_list = list(calib.items())
             calib_list.sort()
             gain = calib_list[-1][1].gain
         else:
@@ -2238,7 +2244,7 @@ class _Response5xFactory(object):
             calib = None
 
         if calib is not None and len(calib) > 0:
-            calib_list = calib.items()
+            calib_list = list(calib.items())
             calib_list.sort()
             gain = calib_list[-1][1].gain
         else:
@@ -2607,7 +2613,7 @@ class _Station(object):
         for b in self.__comment_blk:
             b.output(f)
 
-        chan_list = self.__channel.values()
+        chan_list = list(self.__channel.values())
         chan_list.sort()
         for c in chan_list:
             c.output(f, vol_start, vol_end)
@@ -2819,7 +2825,7 @@ class _RecordBuilder(object):
     def flush(self):
         if self.__buf is not None:
             self.__buf += ((1 << _RECLEN_EXP) - len(self.__buf)) * " "
-            self.__fd.write(self.__buf)
+            self.__fd.write(self.__buf.encode("ascii", "replace"))
             self.__buf = None
 
     def reset(self, type, fd, recno = None):
@@ -2841,7 +2847,7 @@ class _RecordBuilder(object):
         while len(s) - b > (1 << _RECLEN_EXP) - len(self.__buf):
             e = b + (1 << _RECLEN_EXP) - len(self.__buf)
             self.__buf += s[b:e]
-            self.__fd.write(self.__buf)
+            self.__fd.write(self.__buf.encode("ascii", "replace"))
 
             self.__buf = "%06d%c*" % (self.__recno, self.__type)
             self.__recno += 1
@@ -2968,11 +2974,11 @@ class SEEDVolume(object):
                     logs.warning("%s.%s.%s.%s.%s: %s" %
                         (net_code, stat_code, loc_id, chan_id, start_time.isoformat(), e))
 
-        sta_list = self.__station.values()
+        sta_list = list(self.__station.values())
         sta_list.sort()
 
-        if isinstance(dest, basestring):
-            fd = file(dest, "w")
+        if isinstance(dest, str):
+            fd = file(dest, "wb")
         elif hasattr(dest, "write"):
             fd = dest
         else:
@@ -3013,5 +3019,6 @@ class SEEDVolume(object):
         rb.reset("V", fd, 1)
         self.__output_vol(vol_creat_time, sta_list, rb)
 
-        if isinstance(dest, basestring):
+        if isinstance(dest, str):
             fd.close()
+

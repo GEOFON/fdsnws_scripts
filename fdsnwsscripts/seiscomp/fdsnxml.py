@@ -4,6 +4,9 @@
 # License: LGPLv3 (https://www.gnu.org/copyleft/lesser.html)              #
 ###########################################################################
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import uuid
 import json
 import math
@@ -669,13 +672,13 @@ class Inventory(fdsnwsscripts.seiscomp.db.generic.inventory.Inventory):
             elif e.tag == ns + "Sensor":
                 for e1 in e:
                     if e1.tag == ns + "Description":
-                        sensor.description = e1.text.encode('utf-8')
+                        sensor.description = e1.text
 
                     elif e1.tag == ns + "Type":
                         sensor.type = e1.text[:10]
 
                         if not sensor.description:
-                            sensor.description = e1.text.encode('utf-8')
+                            sensor.description = e1.text
 
                     elif e1.tag == ns + "Model":
                         sensor.model = e1.text
@@ -689,11 +692,11 @@ class Inventory(fdsnwsscripts.seiscomp.db.generic.inventory.Inventory):
             elif e.tag == ns + "DataLogger":
                 for e1 in e:
                     if e1.tag == ns + "Description":
-                        logger.description = e1.text.encode('utf-8')
+                        logger.description = e1.text
 
                     elif e1.tag == ns + "Type":
                         if not logger.description:
-                            logger.description = e1.text.encode('utf-8')
+                            logger.description = e1.text
 
                     elif e1.tag == ns + "Model":
                         logger.digitizerModel = e1.text
@@ -760,7 +763,7 @@ class Inventory(fdsnwsscripts.seiscomp.db.generic.inventory.Inventory):
             elif e.tag == ns + "Site":
                 for e1 in e:
                     if e1.tag == ns + "Name":
-                        sta.description = e1.text.encode('utf-8') if e1.text else code
+                        sta.description = e1.text if e1.text else code
 
                     elif e1.tag == ns + "Town":
                         sta.place = e1.text
@@ -793,7 +796,7 @@ class Inventory(fdsnwsscripts.seiscomp.db.generic.inventory.Inventory):
 
         for e in tree:
             if e.tag == ns + "Description":
-                net.description = e.text.encode('utf-8')
+                net.description = e.text
 
             elif e.tag == ns + "Station":
                 self.__process_station(e, net)

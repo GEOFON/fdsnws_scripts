@@ -11,6 +11,9 @@
 # version. For more information, see http://www.gnu.org/
 #*****************************************************************************
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import fdsnwsscripts.seiscomp.db.xmlio.xmlwrap as _xmlwrap
 from fdsnwsscripts.seiscomp.db import DBError
 
@@ -1006,8 +1009,8 @@ def xml_out(inventory, dest, instr=0, modified_after=None, stylesheet=None, inde
     
     _xmldoc_out(xinventory, inventory, instr, modified_after)
 
-    if isinstance(dest, basestring):
-        fd = file(dest, "w")
+    if isinstance(dest, str):
+        fd = open(dest, "wb")
     elif hasattr(dest, "write"):
         fd = dest
     else:
@@ -1018,10 +1021,10 @@ def xml_out(inventory, dest, instr=0, modified_after=None, stylesheet=None, inde
     except AttributeError:
         filename = '<???>'
 
-    fd.write('<?xml version="1.0" encoding="utf-8"?>\n')
+    fd.write(b'<?xml version="1.0" encoding="utf-8"?>\n')
 
     if stylesheet is not None:
-        fd.write('<?xml-stylesheet type="application/xml" href="%s"?>\n' % \
+        fd.write(b'<?xml-stylesheet type="application/xml" href="%s"?>\n' % \
             (stylesheet,))
     
     if indent is True:
@@ -1029,6 +1032,6 @@ def xml_out(inventory, dest, instr=0, modified_after=None, stylesheet=None, inde
     
     ET.ElementTree(xinventory._element).write(fd, encoding="utf-8")
     
-    if isinstance(dest, basestring):
+    if isinstance(dest, str):
         fd.close()
 

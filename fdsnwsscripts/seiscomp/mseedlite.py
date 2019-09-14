@@ -15,6 +15,9 @@ any later version.
 .. moduleauthor:: Andres Heinloo <andres@gfz-potsdam.de>, GEOFON, GFZ Potsdam
 """
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import datetime
 import struct
 import sys

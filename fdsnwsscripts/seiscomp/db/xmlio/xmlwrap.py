@@ -6,6 +6,13 @@
 # (c) 2010 Mathias Hoffmann, GFZ Potsdam
 #
 #
+
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+try: str = unicode
+except NameError: pass
+
 import re
 import datetime
 
@@ -27,19 +34,19 @@ def _string_fromxml(val):
 	if val is None:
 		return ""
 
-	return val.encode("utf-8", "replace").strip()
+	return val.strip()
 
 def _string_toxml(val):
 	if val is None:
 		return ""
 
-	if isinstance(val, str):
+	if isinstance(val, bytes):
 		try:
 			return val.decode("utf-8")
 		except UnicodeDecodeError:
 			return val.decode("iso-8859-1", "replace")
 
-	return unicode(val)
+	return str(val)
 
 def _int_fromxml(val):
 	if val is None or val == "":

@@ -6,6 +6,10 @@
 # (c) 2010 Mathias Hoffmann, GFZ Potsdam
 #
 #
+
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 #import genwrap as _genwrap
 import datetime
 from fdsnwsscripts.seiscomp.db.xmlio import inventory as _xmlio
