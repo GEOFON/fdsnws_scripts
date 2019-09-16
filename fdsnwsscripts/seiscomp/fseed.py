@@ -2515,15 +2515,6 @@ class _Channel(object):
             self.__stage0_blk = _Blockette58(gain = strmcfg.gain,
                 gain_freq = strmcfg.gainFrequency)
 
-    def __cmp__(self, other):
-        if(self.__id < other.__id):
-            return -1
-
-        if(self.__id > other.__id):
-            return 1
-
-        return 0
-
     def add_comment(self, com):
         self.__comment_blk.append(_Blockette59(start_time = com.start,
             end_time = com.end,
@@ -2577,15 +2568,6 @@ class _Station(object):
                 end_time = com.end,
                 comment_key = self.__comment_dict.lookup('S', com.text)))
 
-    def __cmp__(self, other):
-        if(self.__id < other.__id):
-            return -1
-
-        if(self.__id > other.__id):
-            return 1
-
-        return 0
-
     def add_chan(self, strmcfg):
         loccfg = strmcfg.mySensorLocation
 
@@ -2613,8 +2595,8 @@ class _Station(object):
         for b in self.__comment_blk:
             b.output(f)
 
-        chan_list = list(self.__channel.values())
-        chan_list.sort()
+        chan_list = [self.__channel[k] for k in sorted(self.__channel.keys())]
+
         for c in chan_list:
             c.output(f, vol_start, vol_end)
 
@@ -2974,8 +2956,7 @@ class SEEDVolume(object):
                     logs.warning("%s.%s.%s.%s.%s: %s" %
                         (net_code, stat_code, loc_id, chan_id, start_time.isoformat(), e))
 
-        sta_list = list(self.__station.values())
-        sta_list.sort()
+        sta_list = [self.__station[k] for k in sorted(self.__station.keys())]
 
         if isinstance(dest, str):
             fd = file(dest, "wb")

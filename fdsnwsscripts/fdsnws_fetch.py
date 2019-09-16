@@ -100,7 +100,7 @@ except ImportError:
     import urllib.parse as urlparse
     import urllib.parse as urllib
 
-VERSION = "2019.257"
+VERSION = "2019.259"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
