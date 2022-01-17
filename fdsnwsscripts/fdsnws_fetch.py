@@ -100,7 +100,7 @@ except ImportError:
     import urllib.parse as urlparse
     import urllib.parse as urllib
 
-VERSION = "2019.259"
+VERSION = "2022.017"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -771,7 +771,7 @@ def fetch(url, cred, authdata, postlines, xc, tc, dest, nets, chans,
                                         break
 
                                     else:
-                                        blockette_start = next_blockette_start
+                                        blockette_start = next_blockette_start - FIXED_DATA_HEADER_SIZE
 
                                 # blockette 1000 not found
                                 if not b1000_found:
