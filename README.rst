@@ -19,7 +19,7 @@ Overview
 --------
 
 `fdsnws_scripts` is a collection of next generation distributed data request tools that are based on FDSN `web services
-<http://www.fdsn.org/webservices/>`_ and the EIDA `routing service <https://www.seiscomp.de/doc/apps/slarchive.html#slarchive-section-sds>`_.
+<http://www.fdsn.org/webservices/>`_ and the EIDA `routing service <https://www.orfeus-eu.org/data/eida/webservices/routing/>`_.
 
 You may use these tools to request
 
