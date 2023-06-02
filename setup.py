@@ -115,5 +115,6 @@ setup(
         fdsnws2sds=fdsnwsscripts.fdsnws2sds:main
         fdsnws2seed=fdsnwsscripts.fdsnws2seed:main
         fdsnxml2arclink=fdsnwsscripts.fdsnxml2arclink:main
+        fdsnavail=fdsnwsscripts.fdsnavail:main
     '''
 )
