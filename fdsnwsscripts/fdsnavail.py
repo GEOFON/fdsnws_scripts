@@ -78,19 +78,57 @@ class Availability:
 
 
 class Availability:
-    def __init__(self, url: str = None):
-        self.__url = url
+    def __init__(self, stream: Stream, starttime: datetime, endtime: datetime, postfile: str = None):
+        # Dictionary to save extents
         self.__dict: Dict[Stream, list] = dict()
-        # If there is no URL we will use the addchunk method
-        if url is None:
-            return
 
-        # If there is a URL load teh dict from the response
-        resp = requests.get(url)
-        for ds in resp.json()['datasources']:
-            stream = Stream(ds['network'], ds['station'], ds['location'], ds['channel'], ds['quality'], ds['samplerate'])
-            for ts in ds['timespans']:
-                self.addchunk(stream, [str2date(ts[0]), str2date(ts[1])])
+        # GEOFON Routing Service
+        routing = 'https://geofon.gfz-potsdam.de/eidaws/routing/1/query?format=post&service=availability'
+        # If the selection is received via parameters
+        if postfile is None:
+            auxurl = "%s&%s" % (routing, stream.strfilter())
+            if starttime is not None:
+                auxurl += "&starttime=%s" % starttime.isoformat()
+            if endtime is not None:
+                auxurl += "&endtime=%s" % endtime.isoformat()
+            # Query routes
+            routes = requests.get(auxurl)
+        # If there is a post file as input
+        else:
+            with open(postfile, 'r') as fin:
+                # Query routes
+                routes = requests.post(routing, fin.read())
+
+        dc = None
+        # Read each route
+        for line in routes.content.decode().splitlines():
+            # Read the data centre if we don't have one
+            if dc is None:
+                dc = line
+                continue
+
+            # End of block. Next line will be a data centre URL
+            if not len(line):
+                dc = None
+                continue
+
+            # Read normal line and query to the availability DC
+            # Load the dict from the response
+            # print("%s?format=json&mergegaps=1.0&%s" % (dc, line2filter(line)))
+            resp = requests.get("%s?format=json&mergegaps=1.0&%s" % (dc, line2filter(line)))
+            if resp.status_code != 200:
+                print('Error retrieving %s from %s' % (line, dc))
+                continue
+            # Read each stream from the availability
+            for ds in resp.json()['datasources']:
+                stream = Stream(ds['network'], ds['station'], ds['location'], ds['channel'], ds['quality'],
+                                ds['samplerate'])
+                # Read each time window
+                for ts in ds['timespans']:
+                    self.addchunk(stream, [str2date(ts[0]), str2date(ts[1])])
+
+        # Show the availability
+        # print(self.post())
 
     def __iter__(self) -> Iterable[Tuple]:
         for key in self.__dict.keys():
@@ -216,41 +254,80 @@ def mseed2avail(directory: str):
     return scanresult
 
 
+def query(args):
+    if args.post_file is not None:
+        sys.exit(-2)
+    else:
+        params = list()
+        if args.network is not None:
+            params.append('net=%s' % args.network)
+        if args.station is not None:
+            params.append('sta=%s' % args.station)
+        if args.location is not None:
+            params.append('loc=%s' % args.location)
+        if args.channel is not None:
+            params.append('cha=%s' % args.channel)
+        if args.starttime is not None:
+            str2date(args.starttime)
+            params.append('start=%s' % args.starttime)
+        if args.endtime is not None:
+            str2date(args.endtime)
+            params.append('end=%s' % args.endtime)
+        # Retrieve the availability for the selected streams/time windows
+        remote = Availability(Stream(args.network, args.station, args.location, args.channel, None, None),
+                              str2date(args.starttime), str2date(args.endtime))
+
+    # Save the availability
+    # print(remote.post())
+    if args.output_file is None:
+        print(remote.post())
+        return
+
+    with open(args.output_file, 'wt') as fout:
+        fout.write(remote.post())
+
+
+def scan(args):
+    pass
+
+
+def compare(args):
+    pass
+
+
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("-V", "--version", action='version', version="%(prog)s " + VERSION)
     parser.add_argument("-u", "--url", default="geofon.gfz-potsdam.de",
                         help="URL of availability web service. (default is EIDA).")
-    parser.add_argument("-N", "--network", type=str, default=None, help="Network code")
-    parser.add_argument("-S", "--station", type=str, default=None, help="Station code")
-    parser.add_argument("-L", "--location", type=str, default=None, help="Location code")
-    parser.add_argument("-C", "--channel", type=str, default=None, help="Channel code")
-    parser.add_argument("-s", "--starttime", type=str, default=None, help="start time")
-    parser.add_argument("-e", "--endtime", type=str, default=None, help="end time")
-    # parser.add_argument("-p", "--post-file", type=str, default=None, help="request file in FDSNWS POST format")
     parser.add_argument("-o", "--output-file", type=str, default=None, help="file where downloaded data is written")
+    parser.add_argument("-f", "--output-format", type=str, default='post',
+                        help="format to save the availability data (default: post)")
+
+    subparserhelp = """
+    There are three commands you can run with this utility:
+    query: to request the availability for the streams specified in the input parameters
+    scan: to read all miniseed files in a directory,
+    compare: to compare the result from an availability web service against your local data
+    """
+    subparsers = parser.add_subparsers(help=subparserhelp)
+
+    # create the parser for the "query" command
+    parser_query = subparsers.add_parser('query', help='Request availability data from a web service')
+    parser_query.add_argument("-N", "--network", type=str, default=None, help="Network code")
+    parser_query.add_argument("-S", "--station", type=str, default=None, help="Station code")
+    parser_query.add_argument("-L", "--location", type=str, default=None, help="Location code")
+    parser_query.add_argument("-C", "--channel", type=str, default=None, help="Channel code")
+    parser_query.add_argument("-s", "--starttime", type=str, default=None, help="start time")
+    parser_query.add_argument("-e", "--endtime", type=str, default=None, help="end time")
+    parser_query.add_argument("--gap-tolerance", type=float, default=1.0, help="Tolerance in seconds for gap detection")
+    parser_query.add_argument("-p", "--post-file", type=str, default=None, help="request file in FDSNWS POST format")
+    parser_query.set_defaults(func=query)
     args = parser.parse_args()
 
-    params = list()
-    if args.network is not None:
-        params.append('net=%s' % args.network)
-    if args.station is not None:
-        params.append('sta=%s' % args.station)
-    if args.location is not None:
-        params.append('loc=%s' % args.location)
-    if args.channel is not None:
-        params.append('cha=%s' % args.channel)
-    if args.starttime is not None:
-        str2date(args.starttime)
-        params.append('start=%s' % args.starttime)
-    if args.endtime is not None:
-        str2date(args.endtime)
-        params.append('end=%s' % args.endtime)
-    # params = "net=GE&sta=APE&cha=BH?&start=2001-01-01&end=2001-04-01"
-    urlavail = "https://%s/fdsnws/availability/1/query?%s&mergegaps=0&format=json" % (args.url,
-                                                                                      str.join('&', params))
-    # Retrieve the availability for the selected streams/time windows
-    remote = Availability(urlavail)
-    print(remote.post())
+    # Call one of the three functions defined (query, scan, compare)
+    args.func(args)
+
     # local = mseed2avail('.')
     # pprint(local.json())
 
