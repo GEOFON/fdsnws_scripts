@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import sys
 
 from fdsnwsscripts.seiscomp.mseedlite import Input
 from fdsnwsscripts.seiscomp.mseedlite import Record
@@ -17,6 +18,9 @@ from json import dumps
 import argparse
 
 
+VERSION = "2023.153"
+
+
 def str2date(dstr):
     """Transform a string to a datetime.
 
@@ -25,8 +29,8 @@ def str2date(dstr):
     :return: A datetime represented the converted input.
     :rtype: datetime
     """
-    # In case of empty string
-    if not len(dstr):
+    # In case of empty string or None
+    if dstr is None or not len(dstr):
         return None
 
     dateparts = dstr.replace('-', ' ').replace('T', ' ')
@@ -35,8 +39,38 @@ def str2date(dstr):
     return datetime(*map(int, dateparts))
 
 
+def line2filter(line: str) -> str:
+    net, sta, loc, cha, starttime, endtime = line.split()
+    result = ""
+    if len(net) and net != '*':
+        result += '&net=%s' % net
+    if len(sta) and sta != '*':
+        result += '&sta=%s' % sta
+    if len(loc) and loc != '*':
+        result += '&loc=%s' % loc
+    if len(cha) and cha != '*':
+        result += '&cha=%s' % cha
+    if len(starttime) and starttime != '*':
+        result += '&starttime=%s' % starttime
+    if len(endtime) and endtime != '*':
+        result += '&endtime=%s' % endtime
+    return result
+
+
 class Stream(namedtuple('Stream', ['net', 'sta', 'loc', 'cha', 'qua', 'sr'])):
     __slots__ = ()
+
+    def strfilter(self):
+        params = list()
+        if self.net is not None and len(self.net):
+            params.append('net=%s' % self.net)
+        if self.sta is not None and len(self.sta):
+            params.append('sta=%s' % self.sta)
+        if self.loc is not None and len(self.loc):
+            params.append('loc=%s' % self.loc)
+        if self.cha is not None and len(self.cha):
+            params.append('cha=%s' % self.cha)
+        return '&'.join(params)
 
 
 class Availability:
