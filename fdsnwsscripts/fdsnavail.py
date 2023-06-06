@@ -259,7 +259,7 @@ def mseed2avail(directory: str) -> Availability:
     return scanresult
 
 
-def query(args):
+def __query__(args) -> Availability:
     if args.post_file is not None:
         sys.exit(-2)
     else:
@@ -281,7 +281,11 @@ def query(args):
         # Retrieve the availability for the selected streams/time windows
         remote = Availability(Stream(args.network, args.station, args.location, args.channel, None, None),
                               str2date(args.starttime), str2date(args.endtime))
+    return remote
 
+
+def query(args):
+    remote = __query__(args)
     # Save the availability
     # print(remote.post())
     if args.output_file is None:
@@ -292,15 +296,17 @@ def query(args):
         fout.write(remote.post())
 
 
-def scan(args):
-    if args.structure == 'files':
-        result = mseed2avail(args.directory)
-    else:
+def __scan__(args) -> Availability:
+    if args.structure != 'files':
         print('Other types of structure than .mseed files in a directory are still not supported')
         sys.exit(-2)
+    return mseed2avail(args.directory)
 
-    # Save the availability
-    # print(remote.post())
+
+def scan(args):
+    result = __scan__(args)
+
+    # Save/show results
     if args.output_file is None:
         print(result.post())
         return
