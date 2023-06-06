@@ -78,9 +78,13 @@ class Availability:
 
 
 class Availability:
-    def __init__(self, stream: Stream, starttime: datetime, endtime: datetime, postfile: str = None):
+    def __init__(self, stream: Stream = None, starttime: datetime = None, endtime: datetime = None,
+                 postfile: str = None):
         # Dictionary to save extents
         self.__dict: Dict[Stream, list] = dict()
+
+        if stream is None:
+            return
 
         # GEOFON Routing Service
         routing = 'https://geofon.gfz-potsdam.de/eidaws/routing/1/query?format=post&service=availability'
@@ -239,7 +243,8 @@ class Availability:
         return dumps(self.json(), default=datetime.fromisoformat)
 
 
-def mseed2avail(directory: str):
+def mseed2avail(directory: str) -> Availability:
+    """Scan all the files with extension ".mseed" in the directory passed as input parameter."""
     scanresult = Availability()
     for file in os.listdir(directory):
         if not file.endswith('.mseed'):
@@ -288,7 +293,20 @@ def query(args):
 
 
 def scan(args):
-    pass
+    if args.structure == 'files':
+        result = mseed2avail(args.directory)
+    else:
+        print('Other types of structure than .mseed files in a directory are still not supported')
+        sys.exit(-2)
+
+    # Save the availability
+    # print(remote.post())
+    if args.output_file is None:
+        print(result.post())
+        return
+
+    with open(args.output_file, 'wt') as fout:
+        fout.write(result.post())
 
 
 def compare(args):
@@ -304,12 +322,7 @@ def main():
     parser.add_argument("-f", "--output-format", type=str, default='post',
                         help="format to save the availability data (default: post)")
 
-    subparserhelp = """
-    There are three commands you can run with this utility:
-    query: to request the availability for the streams specified in the input parameters
-    scan: to read all miniseed files in a directory,
-    compare: to compare the result from an availability web service against your local data
-    """
+    subparserhelp = """Commands:"""
     subparsers = parser.add_subparsers(help=subparserhelp)
 
     # create the parser for the "query" command
@@ -323,6 +336,13 @@ def main():
     parser_query.add_argument("--gap-tolerance", type=float, default=1.0, help="Tolerance in seconds for gap detection")
     parser_query.add_argument("-p", "--post-file", type=str, default=None, help="request file in FDSNWS POST format")
     parser_query.set_defaults(func=query)
+
+    # create the parser for the "scan" command
+    parser_scan = subparsers.add_parser('scan', help='Scan the local data holdings in miniseed and generate the availability as returned by a web service')
+    parser_scan.add_argument("-d", "--directory", type=str, default=None, help="Root directory of the data holdings")
+    parser_scan.add_argument("--structure", type=str, default='files', help="Organization of the data holdings",
+                             choices=['files'])
+    parser_scan.set_defaults(func=scan)
     args = parser.parse_args()
 
     # Call one of the three functions defined (query, scan, compare)
