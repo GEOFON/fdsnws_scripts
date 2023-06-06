@@ -316,7 +316,17 @@ def scan(args):
 
 
 def compare(args):
-    pass
+    remote = __query__(args)
+    local = __scan__(args)
+    result = remote - local
+
+    # Save/show results
+    if args.output_file is None:
+        print(result.post())
+        return
+
+    with open(args.output_file, 'wt') as fout:
+        fout.write(result.post())
 
 
 def main():
@@ -349,6 +359,22 @@ def main():
     parser_scan.add_argument("--structure", type=str, default='files', help="Organization of the data holdings",
                              choices=['files'])
     parser_scan.set_defaults(func=scan)
+
+
+    # create the parser for the "compare" command
+    parser_compare = subparsers.add_parser('compare', help='Compare the availability from a web service with the one from the local data')
+    parser_compare.add_argument("-N", "--network", type=str, default=None, help="Network code")
+    parser_compare.add_argument("-S", "--station", type=str, default=None, help="Station code")
+    parser_compare.add_argument("-L", "--location", type=str, default=None, help="Location code")
+    parser_compare.add_argument("-C", "--channel", type=str, default=None, help="Channel code")
+    parser_compare.add_argument("-s", "--starttime", type=str, default=None, help="start time")
+    parser_compare.add_argument("-e", "--endtime", type=str, default=None, help="end time")
+    parser_compare.add_argument("--gap-tolerance", type=float, default=1.0, help="Tolerance in seconds for gap detection")
+    parser_compare.add_argument("-p", "--post-file", type=str, default=None, help="request file in FDSNWS POST format")
+    parser_compare.add_argument("-d", "--directory", type=str, default=None, help="Root directory of the data holdings")
+    parser_compare.add_argument("--structure", type=str, default='files', help="Organization of the data holdings",
+                                choices=['files'])
+    parser_compare.set_defaults(func=compare)
     args = parser.parse_args()
 
     # Call one of the three functions defined (query, scan, compare)
