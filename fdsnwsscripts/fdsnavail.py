@@ -320,6 +320,7 @@ def compare(args):
     local = __scan__(args)
     result = remote - local
 
+    # TODO We need a method in Availability to filter/discard very short timewindows (e.g. < 1s)
     # Save/show results
     if args.output_file is None:
         print(result.post())
