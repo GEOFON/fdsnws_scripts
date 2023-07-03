@@ -304,11 +304,11 @@ class Availability:
 def mseed2avail(directory: str) -> Availability:
     """Scan all the files with extension ".mseed" in the directory passed as input parameter."""
     scanresult = Availability()
-    for file in os.listdir(directory):
-        if not file.endswith('.mseed'):
+    for file in os.scandir(directory):
+        if not file.name.endswith('.mseed'):
             continue
 
-        with open(file, 'rb') as fin:
+        with open(file.path, 'rb') as fin:
             for rec in Input(fin):
                 streamid = Stream(rec.net, rec.sta, rec.loc, rec.cha, rec.rectype, rec.fsamp)
                 # print("%s.%s.%s.%s %s %s" % (rec.net, rec.sta, rec.loc, rec.cha, rec.begin_time, rec.end_time))
