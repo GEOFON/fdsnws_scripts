@@ -162,7 +162,8 @@ class Availability:
 
         result = ""
         for st, ts in self:
-            result += "%s %s %s %s %s %s\n" % (st.net, st.sta, st.loc, st.cha, ts[0].isoformat(), ts[1].isoformat())
+            result += "%s %s %s %s %s %s\n" % (st.net, st.sta, st.loc if len(st.loc) else '--',
+                                               st.cha, ts[0].isoformat(), ts[1].isoformat())
         return result
 
     def addchunk(self, streamid: Stream, newts: List[datetime]):
