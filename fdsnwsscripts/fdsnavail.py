@@ -20,65 +20,6 @@ import argparse
 VERSION = "2023.153"
 
 
-# FIXME This is a duplicate of the same function on fsdnws_fetch.py
-# This version has been improved and we could probably replaced the original one
-def scan_sds(d: str, timespan: dict, nets: set):
-    def scan_cha(d):
-        last_file = {}
-
-        for f in os.listdir(d):
-            try:
-                (net, sta, loc, cha, ext, year, doy) = f.split('.')
-                nets.add((net, int(year)))
-
-            except ValueError:
-                print("invalid SDS file: " + f)
-                continue
-
-            if (net, sta, loc, cha) not in timespan:
-                continue
-
-            try:
-                if doy > last_file[loc][0]:
-                    last_file[loc] = (doy, f)
-
-            except KeyError:
-                last_file[loc] = (doy, f)
-
-        for (loc, (doy, f)) in last_file.items():
-            with open(d + '/' + f, 'rb') as fd:
-                nslc = tuple(f.split('.')[:4])
-                rec = Record(fd)
-                fd.seek(-rec.size, 2)
-                rec = Record(fd)
-                ts = timespan[nslc]
-
-                if ts.start < rec.end_time < ts.end:
-                    ts.start = rec.end_time
-                    ts.current = rec.end_time
-
-                elif rec.end_time >= ts.end:
-                    del timespan[nslc]
-
-    def scan_sta(d):
-        for cha in os.listdir(d):
-            if not cha.endswith('.D'):
-                continue
-
-            scan_cha(d + '/' + cha)
-
-    def scan_net(d):
-        for sta in os.listdir(d):
-            scan_sta(d + '/' + sta)
-
-    def scan_year(d):
-        for net in os.listdir(d):
-            scan_net(d + '/' + net)
-
-    for year in os.listdir(d):
-        scan_year(d + "/" + year)
-
-
 def str2date(dstr):
     """Transform a string to a datetime.
 
@@ -317,6 +258,77 @@ def mseed2avail(directory: str) -> Availability:
     return scanresult
 
 
+# FIXME This is based on scan_sds. Check if we could merge them at some moment (fsdnws_fetch.py)
+def sds2avail(directory: str) -> Availability:
+    """Scan all the files with extension ".mseed" in the directory passed as input parameter."""
+    scanresult = Availability()
+
+    def scan_cha(d: str):
+        aux, realcha = os.path.split(d)
+        realcha = realcha[:-2]
+        aux, realsta = os.path.split(aux)
+        aux, realnet = os.path.split(aux)
+        aux, realyear = os.path.split(aux)
+        for f in os.scandir(d):
+            try:
+                (net, sta, loc, cha, ext, yr, doy) = f.name.split('.')
+                # Check that the filename components are coherent with the directory ones
+                if (realyear != yr) or (realnet != net) or (realsta != sta) or (realcha != cha):
+                    raise ValueError
+            except ValueError:
+                print("invalid SDS file: " + f.name)
+                continue
+
+            with open(f.path, 'rb') as fd:
+                # Check first record
+                rec = Record(fd)
+                filestart = rec.begin_time
+                # Check last record
+                fd.seek(-rec.size, 2)
+                rec = Record(fd)
+                fileend = rec.end_time
+
+                # Check that the record header components are coherent with the rest of the information
+                if (realnet != rec.net) or (realsta != rec.sta) or (realcha != rec.cha):
+                    print('Skipping file with incoherent headers! (%s)' % f.name)
+                    continue
+
+                streamid = Stream(rec.net, rec.sta, rec.loc, rec.cha, rec.rectype, rec.fsamp)
+                # print("%s.%s.%s.%s %s %s" % (rec.net, rec.sta, rec.loc, rec.cha, rec.begin_time, rec.end_time))
+                scanresult.addchunk(streamid, [filestart, fileend])
+
+    def scan_sta(d: str):
+        for cha in os.scandir(d):
+            if not cha.is_dir():
+                continue
+            if not cha.name.endswith('.D'):
+                continue
+            scan_cha(cha.path)
+
+    def scan_net(d: str):
+        for sta in os.scandir(d):
+            if not sta.is_dir():
+                continue
+            scan_sta(sta.path)
+
+    def scan_year(d: str):
+        for net in os.scandir(d):
+            if not net.is_dir():
+                continue
+            scan_net(net.path)
+
+    for year in os.scandir(directory):
+        if not year.is_dir():
+            continue
+        try:
+            int(year.name)
+        except ValueError:
+            continue
+        scan_year(year.path)
+
+    return scanresult
+
+
 def __query__(args) -> Availability:
     if args.post_file is not None:
         sys.exit(-2)
@@ -355,10 +367,13 @@ def query(args):
 
 
 def __scan__(args) -> Availability:
-    if args.structure != 'files':
-        print('Other types of structure than .mseed files in a directory are still not supported')
-        sys.exit(-2)
-    return mseed2avail(args.directory)
+    if args.structure == 'sds':
+        return sds2avail(args.directory)
+    if args.structure == 'files':
+        return mseed2avail(args.directory)
+
+    print('Other types of structure than SDS, or "*.mseed" files in a directory are still not supported')
+    sys.exit(-2)
 
 
 def scan(args):
