@@ -8,7 +8,6 @@ import os
 from collections import namedtuple
 from datetime import datetime
 from datetime import timedelta
-from pprint import pprint
 from typing import Dict
 from typing import List
 from typing import Tuple
@@ -19,6 +18,65 @@ import argparse
 
 
 VERSION = "2023.153"
+
+
+# FIXME This is a duplicate of the same function on fsdnws_fetch.py
+# This version has been improved and we could probably replaced the original one
+def scan_sds(d: str, timespan: dict, nets: set):
+    def scan_cha(d):
+        last_file = {}
+
+        for f in os.listdir(d):
+            try:
+                (net, sta, loc, cha, ext, year, doy) = f.split('.')
+                nets.add((net, int(year)))
+
+            except ValueError:
+                print("invalid SDS file: " + f)
+                continue
+
+            if (net, sta, loc, cha) not in timespan:
+                continue
+
+            try:
+                if doy > last_file[loc][0]:
+                    last_file[loc] = (doy, f)
+
+            except KeyError:
+                last_file[loc] = (doy, f)
+
+        for (loc, (doy, f)) in last_file.items():
+            with open(d + '/' + f, 'rb') as fd:
+                nslc = tuple(f.split('.')[:4])
+                rec = Record(fd)
+                fd.seek(-rec.size, 2)
+                rec = Record(fd)
+                ts = timespan[nslc]
+
+                if ts.start < rec.end_time < ts.end:
+                    ts.start = rec.end_time
+                    ts.current = rec.end_time
+
+                elif rec.end_time >= ts.end:
+                    del timespan[nslc]
+
+    def scan_sta(d):
+        for cha in os.listdir(d):
+            if not cha.endswith('.D'):
+                continue
+
+            scan_cha(d + '/' + cha)
+
+    def scan_net(d):
+        for sta in os.listdir(d):
+            scan_sta(d + '/' + sta)
+
+    def scan_year(d):
+        for net in os.listdir(d):
+            scan_net(d + '/' + net)
+
+    for year in os.listdir(d):
+        scan_year(d + "/" + year)
 
 
 def str2date(dstr):
@@ -380,12 +438,6 @@ def main():
 
     # Call one of the three functions defined (query, scan, compare)
     args.func(args)
-
-    # local = mseed2avail('.')
-    # pprint(local.json())
-
-    # print((remote - local).json())
-    # remote - local
 
 
 if __name__ == '__main__':
