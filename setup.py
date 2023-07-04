@@ -23,7 +23,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='2022.017',
+    version='2023.153',
 
     description='fdsnwsscripts: Scripts for working with (EIDA) FDSN web services',
     long_description=long_description,
@@ -80,7 +80,7 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['python-dateutil'],
+    install_requires=['python-dateutil', 'requests'],
 
     python_requires='>=2.7',
     # List additional groups of dependencies here (e.g. development
@@ -115,5 +115,6 @@ setup(
         fdsnws2sds=fdsnwsscripts.fdsnws2sds:main
         fdsnws2seed=fdsnwsscripts.fdsnws2seed:main
         fdsnxml2arclink=fdsnwsscripts.fdsnxml2arclink:main
+        fdsnavail=fdsnwsscripts.fdsnavail:main
     '''
 )

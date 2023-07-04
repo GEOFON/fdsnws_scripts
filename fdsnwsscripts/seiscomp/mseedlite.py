@@ -17,7 +17,8 @@ any later version.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+from typing import Tuple
+from collections.abc import Iterable
 import datetime
 import struct
 import sys
@@ -32,12 +33,12 @@ _MAX_RECLEN = 4096
 _doy = (0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365)
 
 
-def _is_leap(y):
+def _is_leap(y: int) -> bool:
     """True if y is a leap year."""
     return (y % 400 == 0) or (y % 4 == 0 and y % 100 != 0)
 
 
-def _ldoy(y, m):
+def _ldoy(y: int, m: int) -> int:
     """The day of the year of the first day of month m, in year y.
 
     Note: for January, m=1; for December, m=12.
@@ -52,16 +53,16 @@ def _ldoy(y, m):
     return _doy[m-1] + (_is_leap(y) and m >= 3)
 
 
-def _dy2mdy(doy, year):
+def _dy2mdy(doy: int, year: int) -> Tuple[int, int]:
     month = 1
     while doy > _ldoy(year, month + 1):
         month += 1
 
     mday = doy - _ldoy(year, month)
-    return (month, mday)
+    return month, mday
 
 
-def _mdy2dy(month, day, year):
+def _mdy2dy(month: int, day: int, year: int) -> int:
     return _ldoy(year, month) + day
 
 
@@ -411,7 +412,7 @@ class Record(object):
         for b in buf:
             try:
                 ba.append(b)
-            except:
+            except Exception:
                 ba.append(int.from_bytes(b, byteorder='big'))
         fd.write(ba)
 
@@ -428,7 +429,7 @@ class Input(object):
         """Create the iterable from the file handle passed as parameter."""
         self.__fd = fd
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Record]:
         """Define the iterator."""
         while True:
             try:
