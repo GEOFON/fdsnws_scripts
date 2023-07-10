@@ -17,7 +17,7 @@ from json import dumps
 import argparse
 
 
-VERSION = "2023.153"
+VERSION = "2023.191"
 
 
 def str2date(dstr):
@@ -39,6 +39,8 @@ def str2date(dstr):
 
 
 def line2filter(line: str) -> str:
+    """Convert a line potentially from a POST request to an equivalent string with key=value pairs
+    to be used in a GET request"""
     net, sta, loc, cha, starttime, endtime = line.split()
     result = ""
     if len(net) and net != '*':
@@ -82,25 +84,27 @@ class Availability:
         # Dictionary to save extents
         self.__dict: Dict[Stream, list] = dict()
 
-        if stream is None:
-            return
-
         # GEOFON Routing Service
-        routing = 'https://geofon.gfz-potsdam.de/eidaws/routing/1/query?format=post&service=availability'
-        # If the selection is received via parameters
-        if postfile is None:
-            auxurl = "%s&%s" % (routing, stream.strfilter())
+        routing = 'https://geofon.gfz-potsdam.de/eidaws/routing/1/query'
+
+        if postfile is not None:
+            if (stream is not None) or (starttime is not None) or (endtime is not None):
+                raise Exception('Using post_file is incompatible with the rest of the parameters')
+            with open(postfile, 'r') as fin:
+                # Query routes in post format for the availability web service
+                routes = requests.post(routing, 'format=post\nservice=availability\n%s' % (fin.read(),))
+                # print(routes.content)
+        else:
+            if stream is None:
+                return
+
+            auxurl = "%s?format=post&service=availability&%s" % (routing, stream.strfilter())
             if starttime is not None:
                 auxurl += "&starttime=%s" % starttime.isoformat()
             if endtime is not None:
                 auxurl += "&endtime=%s" % endtime.isoformat()
             # Query routes
             routes = requests.get(auxurl)
-        # If there is a post file as input
-        else:
-            with open(postfile, 'r') as fin:
-                # Query routes
-                routes = requests.post(routing, fin.read())
 
         dc = None
         # Read each route
@@ -138,13 +142,21 @@ class Availability:
             for ts in self.__dict[key]:
                 yield key, ts
 
-    def __getitem__(self, item) -> List[datetime]:
+    def __getitem__(self, item: Stream) -> List[datetime]:
         return self.__dict[item]
 
     def streams(self) -> Iterable[Stream]:
         return self.__dict.keys()
 
+    def output(self, outformat: str='post'):
+        if outformat == 'post':
+            return self.post()
+        if outformat == 'json':
+            return dumps(self.json(), default=datetime.isoformat)
+        raise Exception('Unrecognized output format')
+
     def json(self):
+        """Return this object in JSON format compatible with the availability specification"""
         return {
             'created': datetime.utcnow(),
             'version': 1,
@@ -159,7 +171,7 @@ class Availability:
         }
 
     def post(self) -> str:
-
+        """Return this object in POST format compatible with the availability specification"""
         result = ""
         for st, ts in self:
             result += "%s %s %s %s %s %s\n" % (st.net, st.sta, st.loc if len(st.loc) else '--',
@@ -167,6 +179,9 @@ class Availability:
         return result
 
     def addchunk(self, streamid: Stream, newts: List[datetime]):
+        """Add a new timewindow to this object
+
+        This method takes care of merging entries if the availability can be expressed in a more compact way."""
         if newts[0] >= newts[1]:
             raise Exception('%s >= %s' % (newts[0], newts[1]))
         # key = Stream(net, sta, loc, cha, qua, sr)
@@ -196,6 +211,13 @@ class Availability:
 
         # Add the chunk at the end because it is completely new and without overlaps
         self.__dict[streamid].append([newts[0], newts[1]])
+
+    def __iadd__(self, other: Availability):
+        itother = iter(other)
+        for st, lts in itother:
+            # print(st, lts)
+            self.addchunk(st, lts)
+            # print('self', self.__dict)
 
     def __sub__(self, other: Availability) -> Availability:
         # streams = set(self.streams())
@@ -227,11 +249,16 @@ class Availability:
                         secs = (min(aux1[1], ts2[0]) - aux1[0]).total_seconds()
                         if (aux1[0] < ts2[0]):
                             if (secs > 1.0/st1.sr):
-                                print('Missing part: %s, %s' % (aux1[0], min(aux1[1], ts2[0])))
+                                # print('Missing part: %s, %s' % (aux1[0], min(aux1[1], ts2[0])))
                                 resdiff.addchunk(st1, [aux1[0], min(aux1[1], ts2[0])])
-                            else:
-                                print('Discarding: %s, %s' % (aux1[0], min(aux1[1], ts2[0])))
+                            # else:
+                                # print('Discarding: %s, %s' % (aux1[0], min(aux1[1], ts2[0])))
                         break
+                else:
+                    # We couldn't find a matching time window in the "other" object
+                    # print('Missing part: %s, %s' % (aux1[0], aux1[1]))
+                    resdiff.addchunk(st1, [aux1[0], aux1[1]])
+
             except KeyError:
                 # print('Stream %s not found -> Adding %s' % (st1, ts1))
                 resdiff.addchunk(st1, ts1)
@@ -240,7 +267,10 @@ class Availability:
         return resdiff
 
     def __str__(self) -> str:
-        return dumps(self.json(), default=datetime.fromisoformat)
+        return self.post()
+
+    def __repr__(self) -> str:
+        return dumps(self.json(), default=datetime.isoformat)
 
 
 def mseed2avail(directory: str) -> Availability:
@@ -280,23 +310,27 @@ def sds2avail(directory: str) -> Availability:
                 print("invalid SDS file: " + f.name)
                 continue
 
-            with open(f.path, 'rb') as fd:
-                # Check first record
-                rec = Record(fd)
-                filestart = rec.begin_time
-                # Check last record
-                fd.seek(-rec.size, 2)
-                rec = Record(fd)
-                fileend = rec.end_time
+            with open(f.path, 'rb') as fin:
+                for rec in Input(fin):
+                    # Check that the record header components are coherent with the rest of the information
+                    if (realnet != rec.net) or (realsta != rec.sta) or (realcha != rec.cha):
+                        print('Skipping file with incoherent headers! (%s)' % f.name)
+                        continue
+                    streamid = Stream(rec.net, rec.sta, rec.loc, rec.cha, rec.rectype, rec.fsamp)
+                    # print("%s.%s.%s.%s %s %s" % (rec.net, rec.sta, rec.loc, rec.cha, rec.begin_time, rec.end_time))
+                    scanresult.addchunk(streamid, [rec.begin_time, rec.end_time])
 
-                # Check that the record header components are coherent with the rest of the information
-                if (realnet != rec.net) or (realsta != rec.sta) or (realcha != rec.cha):
-                    print('Skipping file with incoherent headers! (%s)' % f.name)
-                    continue
-
-                streamid = Stream(rec.net, rec.sta, rec.loc, rec.cha, rec.rectype, rec.fsamp)
+                # First approach was to take the first and last record, but the gaps in the middle would be missing!
+                # # Check first record
+                # rec = Record(fd)
+                # filestart = rec.begin_time
+                # # Check last record
+                # fd.seek(-rec.size, 2)
+                # rec = Record(fd)
+                # fileend = rec.end_time
+                # streamid = Stream(rec.net, rec.sta, rec.loc, rec.cha, rec.rectype, rec.fsamp)
                 # print("%s.%s.%s.%s %s %s" % (rec.net, rec.sta, rec.loc, rec.cha, rec.begin_time, rec.end_time))
-                scanresult.addchunk(streamid, [filestart, fileend])
+                # scanresult.addchunk(streamid, [filestart, fileend])
 
     def scan_sta(d: str):
         for cha in os.scandir(d):
@@ -332,7 +366,8 @@ def sds2avail(directory: str) -> Availability:
 
 def __query__(args) -> Availability:
     if args.post_file is not None:
-        sys.exit(-2)
+        remote = Availability(postfile=args.post_file)
+        # print(remote)
     else:
         params = list()
         if args.network is not None:
@@ -360,11 +395,11 @@ def query(args):
     # Save the availability
     # print(remote.post())
     if args.output_file is None:
-        print(remote.post())
+        print(remote.output(outformat=args.output_format))
         return
 
     with open(args.output_file, 'wt') as fout:
-        fout.write(remote.post())
+        fout.write(remote.output(outformat=args.output_format))
 
 
 def __scan__(args) -> Availability:
@@ -389,10 +424,16 @@ def scan(args):
         fout.write(result.post())
 
 
-def compare(args):
+def __compare__(args) -> Availability:
     remote = __query__(args)
+    # print(remote.post())
     local = __scan__(args)
-    result = remote - local
+    # print(local.post())
+    return remote - local
+
+
+def compare(args):
+    result = __compare__(args)
 
     # TODO We need a method in Availability to filter/discard very short timewindows (e.g. < 1s)
     # Save/show results
@@ -407,11 +448,8 @@ def compare(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-V", "--version", action='version', version="%(prog)s " + VERSION)
-    parser.add_argument("-u", "--url", default="geofon.gfz-potsdam.de",
-                        help="URL of availability web service. (default is EIDA).")
-    parser.add_argument("-o", "--output-file", type=str, default=None, help="file where downloaded data is written")
-    parser.add_argument("-f", "--output-format", type=str, default='post',
-                        help="format to save the availability data (default: post)")
+    # parser.add_argument("-u", "--url", default="geofon.gfz-potsdam.de",
+    #                     help="URL of availability web service. (default is EIDA).")
 
     subparserhelp = """Commands:"""
     subparsers = parser.add_subparsers(help=subparserhelp)
@@ -426,29 +464,42 @@ def main():
     parser_query.add_argument("-e", "--endtime", type=str, default=None, help="end time")
     parser_query.add_argument("--gap-tolerance", type=float, default=1.0, help="Tolerance in seconds for gap detection")
     parser_query.add_argument("-p", "--post-file", type=str, default=None, help="request file in FDSNWS POST format")
+    parser_query.add_argument("-o", "--output-file", type=str, default=None,
+                              help="file where informed availability is written")
+    parser_query.add_argument("-f", "--output-format", type=str, default='post', choices=['post', 'json'],
+                              help="format used to save the availability data (default: post)")
     parser_query.set_defaults(func=query)
 
     # create the parser for the "scan" command
     parser_scan = subparsers.add_parser('scan', help='Scan the local data holdings in miniseed and generate the availability as returned by a web service')
     parser_scan.add_argument("-d", "--directory", type=str, default=None, help="Root directory of the data holdings")
     parser_scan.add_argument("--structure", type=str, default='files', help="Organization of the data holdings",
-                             choices=['files'])
+                             choices=['files', 'sds'])
+    parser_scan.add_argument("-o", "--output-file", type=str, default=None,
+                             help="file where the result of the scan is written")
+    parser_scan.add_argument("-f", "--output-format", type=str, default='post', choices=['post', 'json'],
+                             help="format used to save the scan result (default: post)")
     parser_scan.set_defaults(func=scan)
 
-
-    # create the parser for the "compare" command
-    parser_compare = subparsers.add_parser('compare', help='Compare the availability from a web service with the one from the local data')
+    # Create the parser for the "compare" command
+    helptxt = 'Compare the availability from a web service with the one from the local data'
+    parser_compare = subparsers.add_parser('compare', help=helptxt)
     parser_compare.add_argument("-N", "--network", type=str, default=None, help="Network code")
     parser_compare.add_argument("-S", "--station", type=str, default=None, help="Station code")
     parser_compare.add_argument("-L", "--location", type=str, default=None, help="Location code")
     parser_compare.add_argument("-C", "--channel", type=str, default=None, help="Channel code")
     parser_compare.add_argument("-s", "--starttime", type=str, default=None, help="start time")
     parser_compare.add_argument("-e", "--endtime", type=str, default=None, help="end time")
-    parser_compare.add_argument("--gap-tolerance", type=float, default=1.0, help="Tolerance in seconds for gap detection")
+    parser_compare.add_argument("--gap-tolerance", type=float, default=1.0,
+                                help="Tolerance in seconds for gap detection")
     parser_compare.add_argument("-p", "--post-file", type=str, default=None, help="request file in FDSNWS POST format")
     parser_compare.add_argument("-d", "--directory", type=str, default=None, help="Root directory of the data holdings")
     parser_compare.add_argument("--structure", type=str, default='files', help="Organization of the data holdings",
-                                choices=['files'])
+                                choices=['sds', 'files'])
+    parser_compare.add_argument("-o", "--output-file", type=str, default=None,
+                                help="file where the result of the comparison is written")
+    parser_compare.add_argument("-f", "--output-format", type=str, default='post', choices=['post', 'json'],
+                                help="format used to save the comparison (default: post)")
     parser_compare.set_defaults(func=compare)
     args = parser.parse_args()
 
