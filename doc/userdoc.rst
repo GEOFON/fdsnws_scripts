@@ -24,6 +24,24 @@ fdsnwsscripts is a collection of next generation distributed data request tools 
 on `FDSN web services <https://www.fdsn.org/webservices>` and the
 `EIDA routing service <https://www.orfeus-eu.org/data/eida/eidaws/routing>`.
 
+You may use these tools to request:
+
+* seismic waveform data, as mini-SEED, using the fdsnws-dataselect web service,
+* seismic metadata, as FDSN Station XML, using the fdsnws-station web service.
+
+There are four tools here:
+
+* `fdsnws_fetch` can request waveform data or metadata, from multiple data centres (access points)
+  with a single command. It does this using the EIDA routing service to discover which data centre(s)
+  holds the data requested.
+* `fdsnws2sds` supports requests for larger amounts of data, saving it in an SDS tree-like file system
+  structure (the SeisComP Data Structure). SDS is defined here.
+* `fdsnws2seed` provides full SEED and dataless SEED using EIDA FDSN web services. Modern applications
+  should use FDSN StationXML instead of SEED.
+* `fdsnavail` provides three different commands to: _query_ the new availability web services, _scan_
+  your local data holdings and give you a result as the availability web service, and _compare_ your
+  local data with what it has been declared in the data centre and provide you a list of what you miss.
+
 Installation
 ============
 
