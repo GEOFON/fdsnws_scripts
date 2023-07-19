@@ -446,7 +446,7 @@ A user requests the availability for some data that (s)he wants to get and saves
 For instance, three days of data from GE.APE.*.BH?. ::
 
     % fdsnavail query -N GE -S APE -C "BH?" -s "2001-02-01" -e "2001-02-03" -o remote.txt
-    javier@sec24-dynip-171 temp2 % cat remote.txt
+    % cat remote.txt
     GE APE -- BHE 2001-02-01T06:41:54.215000 2001-02-01T06:44:43.015000
     GE APE -- BHE 2001-02-01T07:14:59.112000 2001-02-01T23:09:37.812000
     GE APE -- BHE 2001-02-02T06:47:42.215000 2001-02-02T07:02:58.915000
@@ -524,7 +524,7 @@ For instance, one day more (until 2001-02-04). Then, we check what we already ha
 For instance, ::
 
     % fdsnavail compare -d . -N GE -S APE -C "BH?" -s "2001-02-01" -e "2001-02-04" -o diff.txt
-    javier@sec24-dynip-171 temp2 % cat diff.txt
+    % cat diff.txt
     GE APE -- BHE 2001-02-03T10:39:26.215000 2001-02-03T11:01:38.515000
     GE APE -- BHE 2001-02-03T11:30:58.436000 2001-02-03T11:36:05.836000
     GE APE -- BHN 2001-02-03T10:39:26.215000 2001-02-03T11:03:03.915000
