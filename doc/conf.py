@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'fdsnwsscripts'
-copyright = '2023, Andres Heinloo'
+copyright = '2019-2023 Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences, Potsdam, Germany'
 author = 'Andres Heinloo'
 
 # The full version, including alpha/beta/rc tags
@@ -36,6 +36,9 @@ extensions = [
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
+# The suffix of source filenames.
+source_suffix = '.rst'
+
 # The root document.
 root_doc = 'index'
 
@@ -50,7 +53,17 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'default'
+
+# Theme options are theme-specific and customize the look and feel of a theme
+# further.  For a list of options available for each theme, see the
+# documentation.
+html_theme_options = {
+    'collapse_navigation': False,
+    'externalrefs': True,
+    'navigation_depth': 2,
+    'prev_next_buttons_location': 'both'
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
