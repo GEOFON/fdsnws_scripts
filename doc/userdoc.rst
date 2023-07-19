@@ -116,7 +116,7 @@ of the cloned repository. ::
 Common command-line options
 ===========================
 
-The following command-line options are common to all scripts: ::
+The following command-line options are common to almost all scripts: ::
 
     --version:
     show program's version number and exit
@@ -334,3 +334,204 @@ Example
 
     $ ./fdsnws2seed -v -r 1 -b req.breq -o req.seed
 
+
+fdsnavail
+=========
+
+`fdsnavail` lets the user interact with the new availability web service deployed at many data centres.
+There are three modes of operation: `query`, `scan`, and `compare`.
+
+Command-line options
+--------------------
+
+For each of the three modes there is a different number of parameters. The general options are: ::
+
+    % fdsnavail -h
+    usage: fdsnavail [-h] [-V] {query,scan,compare} ...
+
+    positional arguments:
+      {query,scan,compare}  Commands:
+        query               Request availability data from a web service
+        scan                Scan the local data holdings in miniseed and generate the availability as returned by a web service
+        compare             Compare the availability from a web service with the one from the local data
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -V, --version         show program's version number and exit
+
+For the `query` command you have the following options: ::
+
+    % fdsnavail query -h
+    usage: fdsnavail query [-h] [-N NETWORK] [-S STATION] [-L LOCATION] [-C CHANNEL] [-s STARTTIME] [-e ENDTIME] [--gap-tolerance GAP_TOLERANCE] [-p POST_FILE] [-o OUTPUT_FILE]
+                           [-f {post,json}]
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -N NETWORK, --network NETWORK
+                            Network code
+      -S STATION, --station STATION
+                            Station code
+      -L LOCATION, --location LOCATION
+                            Location code
+      -C CHANNEL, --channel CHANNEL
+                            Channel code
+      -s STARTTIME, --starttime STARTTIME
+                            start time
+      -e ENDTIME, --endtime ENDTIME
+                            end time
+      --gap-tolerance GAP_TOLERANCE
+                            Tolerance in seconds for gap detection
+      -p POST_FILE, --post-file POST_FILE
+                            request file in FDSNWS POST format
+      -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                            file where informed availability is written
+      -f {post,json}, --output-format {post,json}
+                            format used to save the availability data (default: post)
+
+For the `scan` mode you have: ::
+
+    % fdsnavail scan -h
+    usage: fdsnavail scan [-h] [-d DIRECTORY] [--structure {files,sds}] [-o OUTPUT_FILE] [-f {post,json}]
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -d DIRECTORY, --directory DIRECTORY
+                            Root directory of the data holdings
+      --structure {files,sds}
+                            Organization of the data holdings
+      -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                            file where the result of the scan is written
+      -f {post,json}, --output-format {post,json}
+                            format used to save the scan result (default: post)
+
+and in the `compare` mode: ::
+
+    % fdsnavail compare -h
+    usage: fdsnavail compare [-h] [-N NETWORK] [-S STATION] [-L LOCATION] [-C CHANNEL] [-s STARTTIME] [-e ENDTIME] [--gap-tolerance GAP_TOLERANCE] [-p POST_FILE] [-d DIRECTORY]
+                             [--structure {sds,files}] [-o OUTPUT_FILE] [-f {post,json}]
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -N NETWORK, --network NETWORK
+                            Network code
+      -S STATION, --station STATION
+                            Station code
+      -L LOCATION, --location LOCATION
+                            Location code
+      -C CHANNEL, --channel CHANNEL
+                            Channel code
+      -s STARTTIME, --starttime STARTTIME
+                            start time
+      -e ENDTIME, --endtime ENDTIME
+                            end time
+      --gap-tolerance GAP_TOLERANCE
+                            Tolerance in seconds for gap detection
+      -p POST_FILE, --post-file POST_FILE
+                            request file in FDSNWS POST format
+      -d DIRECTORY, --directory DIRECTORY
+                            Root directory of the data holdings
+      --structure {sds,files}
+                            Organization of the data holdings
+      -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                            file where the result of the comparison is written
+      -f {post,json}, --output-format {post,json}
+                            format used to save the comparison (default: post)
+
+Example
+-------
+
+A typical example regarding a usual workflow could be the following.
+
+A user requests the availability for some data that (s)he wants to get and saves it in the file `remote.txt` for later use.
+For instance, three days of data from GE.APE.*.BH?. ::
+
+    % fdsnavail query -N GE -S APE -C "BH?" -s "2001-02-01" -e "2001-02-03" -o remote.txt
+    javier@sec24-dynip-171 temp2 % cat remote.txt
+    GE APE -- BHE 2001-02-01T06:41:54.215000 2001-02-01T06:44:43.015000
+    GE APE -- BHE 2001-02-01T07:14:59.112000 2001-02-01T23:09:37.812000
+    GE APE -- BHE 2001-02-02T06:47:42.215000 2001-02-02T07:02:58.915000
+    GE APE -- BHE 2001-02-02T07:28:36.215000 2001-02-02T07:31:54.235000
+    GE APE -- BHE 2001-02-02T07:32:54.235000 2001-02-02T18:58:45.935000
+    GE APE -- BHN 2001-02-01T06:41:54.215000 2001-02-01T06:44:22.915000
+    GE APE -- BHN 2001-02-01T07:14:59.112000 2001-02-01T23:08:47.812000
+    GE APE -- BHN 2001-02-02T06:29:49.215000 2001-02-02T06:32:53.715000
+    GE APE -- BHN 2001-02-02T06:47:42.215000 2001-02-02T07:03:52.015000
+    GE APE -- BHN 2001-02-02T07:28:36.215000 2001-02-02T07:31:54.535000
+    GE APE -- BHN 2001-02-02T07:32:54.535000 2001-02-02T18:59:54.935000
+    GE APE -- BHZ 2001-02-01T06:41:54.215000 2001-02-01T06:44:53.215000
+    GE APE -- BHZ 2001-02-01T07:14:59.112000 2001-02-01T23:10:36.712000
+    GE APE -- BHZ 2001-02-02T06:29:49.215000 2001-02-02T06:32:54.615000
+    GE APE -- BHZ 2001-02-02T06:47:42.215000 2001-02-02T07:03:48.415000
+    GE APE -- BHZ 2001-02-02T07:28:36.215000 2001-02-02T07:31:54.635000
+    GE APE -- BHZ 2001-02-02T07:32:54.635000 2001-02-02T19:00:43.635000
+
+Now, with all available data defined in the `remote.txt` file, the user knows exactly which data to request
+and that all these data should be received, as this is what the data centre declares to have. Namely, there
+should be no exceptions. The user requests the data by means of `fdsnws_fetch` and saves it in `GE.APE.mseed`. ::
+
+    % fdsnws_fetch -p remote.txt -o GE.APE.mseed
+
+    You received seismic waveform data from the following network(s):
+    GE GEOFON Program, GFZ Potsdam, Germany
+
+    Acknowledgment is extremely important for network operators
+    providing open data. When preparing publications, please
+    cite the data appropriately. The FDSN service at
+
+        http://www.fdsn.org/networks/citation/?networks=GE
+
+    provides a helpful guide based on available network
+    Digital Object Identifiers.
+
+    % ls -lh GE.APE.mseed
+    -rw-r--r--  1 user  staff   6.4M Jul 19 17:59 GE.APE.mseed
+
+You can check details about the data you downloaded with the `scan` command. Just to be sure what you have received. ::
+
+    % fdsnavail scan -f post -d .
+    GE APE -- BHE 2001-02-01T06:41:54.215867 2001-02-01T06:44:43.015867
+    GE APE -- BHE 2001-02-01T07:14:59.112276 2001-02-01T23:09:37.821675
+    GE APE -- BHE 2001-02-02T06:47:42.215867 2001-02-02T07:02:58.915867
+    GE APE -- BHE 2001-02-02T07:28:36.215867 2001-02-02T07:31:54.235700
+    GE APE -- BHE 2001-02-02T07:32:54.235736 2001-02-02T18:58:45.946361
+    GE APE -- BHN 2001-02-01T06:41:54.215867 2001-02-01T06:44:22.915867
+    GE APE -- BHN 2001-02-01T07:14:59.112277 2001-02-01T23:08:47.821659
+    GE APE -- BHN 2001-02-02T06:29:49.215867 2001-02-02T06:32:53.715867
+    GE APE -- BHN 2001-02-02T06:47:42.215867 2001-02-02T07:03:52.015867
+    GE APE -- BHN 2001-02-02T07:28:36.215867 2001-02-02T07:31:54.535700
+    GE APE -- BHN 2001-02-02T07:32:54.535736 2001-02-02T18:59:54.946376
+    GE APE -- BHZ 2001-02-01T06:41:54.215867 2001-02-01T06:44:53.215867
+    GE APE -- BHZ 2001-02-01T07:14:59.112277 2001-02-01T23:10:36.721690
+    GE APE -- BHZ 2001-02-02T06:29:49.215867 2001-02-02T06:32:54.615867
+    GE APE -- BHZ 2001-02-02T06:47:42.215867 2001-02-02T07:03:48.415867
+    GE APE -- BHZ 2001-02-02T07:28:36.215867 2001-02-02T07:31:54.635700
+    GE APE -- BHZ 2001-02-02T07:32:54.635736 2001-02-02T19:00:43.646391
+
+But the most useful thing to do is to `compare` your local data with the data at the data centre.
+In this way, you know **exactly** if you miss some data or not.
+For instance, let's do the comparison between what we have (downloaded in the previous step) and
+the data declared by the availability web service. ::
+
+    % fdsnavail compare -d . -N GE -S APE -C "BH?" -s "2001-02-01" -e "2001-02-03" -o diff.txt
+    % cat diff.txt
+    % ls -lh diff.txt
+    -rw-r--r--  1 user  staff     0B Jul 19 18:16 diff.txt
+
+We can see that we don't miss any data.
+
+To check that this is actually working, we could think that some days later we want to get more data.
+For instance, one day more (until 2001-02-04). Then, we check what we already have with the data we would like to have.
+For instance, ::
+
+    % fdsnavail compare -d . -N GE -S APE -C "BH?" -s "2001-02-01" -e "2001-02-04" -o diff.txt
+    javier@sec24-dynip-171 temp2 % cat diff.txt
+    GE APE -- BHE 2001-02-03T10:39:26.215000 2001-02-03T11:01:38.515000
+    GE APE -- BHE 2001-02-03T11:30:58.436000 2001-02-03T11:36:05.836000
+    GE APE -- BHN 2001-02-03T10:39:26.215000 2001-02-03T11:03:03.915000
+    GE APE -- BHN 2001-02-03T11:30:58.436000 2001-02-03T11:36:14.036000
+    GE APE -- BHZ 2001-02-03T10:39:26.215000 2001-02-03T11:03:11.415000
+    GE APE -- BHZ 2001-02-03T11:30:58.436000 2001-02-03T11:33:46.436000
+
+We can then see, that we miss some time windows related to the day 2001-02-03, that we hadn't requested previously.
+The default output format is `post`, what is very practical to later submit it via `fdsnws_fetch` or any other client you
+would like to use, as this is the expected format for the dataselect web service.
