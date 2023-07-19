@@ -7,3 +7,4 @@ fdsnwsscripts documentation
     :titlesonly:
 
     userdoc.rst
+    modules.rst
