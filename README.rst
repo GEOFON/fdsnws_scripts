@@ -29,7 +29,7 @@ You may use these tools to request
 
 * availability information, as JSON or POST format, using the fdsnws-availability web service.
 
-There are three tools here:
+There are four tools here:
 
 #. `fdsnws_fetch` can request waveform data or metadata, from multiple data centres (access points) with a single command. It does this using the EIDA routing service to discover which data centre(s) holds the data requested.
 
