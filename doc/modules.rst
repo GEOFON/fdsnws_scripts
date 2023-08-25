@@ -2,14 +2,11 @@
    :maxdepth: 4
 
 
-fdsnavail
-=========
+Developer documentation
+=======================
 
-Submodules
-----------
-
-fdsnwsscripts\.fdsnavail module
--------------------------------
+fdsnavail module
+----------------
 
 .. automodule:: fdsnwsscripts.fdsnavail
     :members:
@@ -17,10 +14,26 @@ fdsnwsscripts\.fdsnavail module
     :show-inheritance:
 
 
-Module contents
----------------
+fdsnws2sds module
+-----------------
 
-.. automodule:: fdsnwsscripts
+.. automodule:: fdsnwsscripts.fdsnws2sds
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+fdsnws2seed module
+------------------
+
+.. automodule:: fdsnwsscripts.fdsnws2seed
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+fdsnws_fetch module
+-------------------
+
+.. automodule:: fdsnwsscripts.fdsnws_fetch
     :members:
     :undoc-members:
     :show-inheritance:

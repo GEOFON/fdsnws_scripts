@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+"""`fdsnavail` lets the user interact with the new availability web service deployed at many data centres.
+There are three modes of operation: `query`, `scan`, and `compare`.
+"""
+
 import sys
 
 from fdsnwsscripts.seiscomp.mseedlite import Input
