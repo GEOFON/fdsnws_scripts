@@ -27,6 +27,8 @@ You may use these tools to request
 
 * seismic metadata, as FDSN Station XML, using the fdsnws-station web service.
 
+* availability information, as JSON or POST format, using the fdsnws-availability web service.
+
 There are three tools here:
 
 #. `fdsnws_fetch` can request waveform data or metadata, from multiple data centres (access points) with a single command. It does this using the EIDA routing service to discover which data centre(s) holds the data requested.
@@ -36,3 +38,4 @@ There are three tools here:
 
 #. `fdsnws2seed` provides full SEED and dataless SEED using EIDA FDSN web services. Modern applications should use FDSN StationXML instead of SEED.
 
+#. `fdsnavail` lets the user interact with the new FDSN availability web service and compare to their local data holdings to find missing data.
