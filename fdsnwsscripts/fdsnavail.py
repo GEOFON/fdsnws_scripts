@@ -6,9 +6,7 @@ There are three modes of operation: `query`, `scan`, and `compare`.
 """
 
 import sys
-
 from fdsnwsscripts.seiscomp.mseedlite import Input
-from fdsnwsscripts.seiscomp.mseedlite import Record
 import os
 from collections import namedtuple
 from datetime import datetime
@@ -17,6 +15,7 @@ from typing import Dict
 from typing import List
 from typing import Tuple
 from typing import Iterable
+from typing import Union
 import requests
 from json import dumps
 import argparse
@@ -25,11 +24,11 @@ import argparse
 VERSION = "2023.191"
 
 
-def str2date(dstr):
+def str2date(dstr: str) -> Union[datetime, None]:
     """Transform a string to a datetime.
 
     :param dstr: A datetime in ISO format.
-    :type dstr: string
+    :type dstr: str
     :return: A datetime represented the converted input.
     :rtype: datetime
     """
@@ -45,7 +44,13 @@ def str2date(dstr):
 
 def line2filter(line: str) -> str:
     """Convert a line potentially from a POST request to an equivalent string with key=value pairs
-    to be used in a GET request"""
+    to be used in a GET request
+
+    :param line: Line from a POST request.
+    :type line: str
+    :return: Equivalent string to be used in a GET request with key/value pairs.
+    :rtype: str
+"""
     net, sta, loc, cha, starttime, endtime = line.split()
     result = ""
     if len(net) and net != '*':
@@ -64,9 +69,15 @@ def line2filter(line: str) -> str:
 
 
 class Stream(namedtuple('Stream', ['net', 'sta', 'loc', 'cha', 'qua', 'sr'])):
+    """Stream with the four components from NSLC code plus quality and sampling rate"""
     __slots__ = ()
 
-    def strfilter(self):
+    def strfilter(self) -> str:
+        """Transform the Stream to a string with key/value pairs to be used in a GET request
+
+        :return: Equivalent string to be used in a GET request with key/value pairs.
+        :rtype: str
+        """
         params = list()
         if self.net is not None and len(self.net):
             params.append('net=%s' % self.net)
@@ -84,6 +95,9 @@ class Availability:
 
 
 class Availability:
+    """
+    Availability information about streams
+    """
     def __init__(self, stream: Stream = None, starttime: datetime = None, endtime: datetime = None,
                  postfile: str = None):
         # Dictionary to save extents
@@ -151,17 +165,27 @@ class Availability:
         return self.__dict[item]
 
     def streams(self) -> Iterable[Stream]:
+        """Return streams in this availability object"""
         return self.__dict.keys()
 
-    def output(self, outformat: str='post'):
+    def output(self, outformat: str='post') -> Union[str, dict]:
+        """Return availability information in POST or JSON format
+
+        :param outformat: Output format
+        :type outformat: str
+        :rtype: dict, str
+        """
         if outformat == 'post':
             return self.post()
         if outformat == 'json':
             return dumps(self.json(), default=datetime.isoformat)
         raise Exception('Unrecognized output format')
 
-    def json(self):
-        """Return this object in JSON format compatible with the availability specification"""
+    def json(self) -> dict:
+        """Return availability information in JSON format compatible with the availability specification
+
+        :rtype: dict
+        """
         return {
             'created': datetime.utcnow(),
             'version': 1,
@@ -176,7 +200,10 @@ class Availability:
         }
 
     def post(self) -> str:
-        """Return this object in POST format compatible with the availability specification"""
+        """Return availability information in POST format compatible with the availability specification
+
+        :rtype: str
+        """
         result = ""
         for st, ts in self:
             result += "%s %s %s %s %s %s\n" % (st.net, st.sta, st.loc if len(st.loc) else '--',
@@ -184,9 +211,13 @@ class Availability:
         return result
 
     def addchunk(self, streamid: Stream, newts: List[datetime]):
-        """Add a new timewindow to this object
+        """Add a new timewindow to this object. This method takes care of merging entries if the availability can be expressed in a more compact way.
 
-        This method takes care of merging entries if the availability can be expressed in a more compact way."""
+        :param streamid: Stream to be added
+        :type streamid: Stream
+        :param newts: Time window to be added in the form of a list with two components
+        :type newts: list
+        """
         if newts[0] >= newts[1]:
             raise Exception('%s >= %s' % (newts[0], newts[1]))
         # key = Stream(net, sta, loc, cha, qua, sr)
@@ -279,7 +310,13 @@ class Availability:
 
 
 def mseed2avail(directory: str) -> Availability:
-    """Scan all the files with extension ".mseed" in the directory passed as input parameter."""
+    """Scan all the files with extension ".mseed" in the directory passed as input parameter.
+
+    :param directory: Directory where the files should be scanned
+    :type directory: str
+    :returns: Availability information from the mseed files
+    :rtype: Availability
+    """
     scanresult = Availability()
     for file in os.scandir(directory):
         if not file.name.endswith('.mseed'):
@@ -296,7 +333,13 @@ def mseed2avail(directory: str) -> Availability:
 
 # FIXME This is based on scan_sds. Check if we could merge them at some moment (fsdnws_fetch.py)
 def sds2avail(directory: str) -> Availability:
-    """Scan all the files with extension ".mseed" in the directory passed as input parameter."""
+    """Scan all the files with extension ".mseed" in the directory passed as input parameter
+
+    :param directory: Directory where the root of the SDS is located
+    :type directory: str
+    :returns: Availability information from the SDS structure
+    :rtype: Availability
+"""
     scanresult = Availability()
 
     def scan_cha(d: str):
