@@ -8,7 +8,7 @@ Developer documentation
 fdsnavail module
 ----------------
 
-.. automodule:: fdsnavail
+.. automodule:: fdsnwsscripts.fdsnavail
     :members:
     :show-inheritance:
 
@@ -16,20 +16,20 @@ fdsnavail module
 fdsnws2sds module
 -----------------
 
-.. automodule:: fdsnws2sds
+.. automodule:: fdsnwsscripts.fdsnws2sds
     :members:
     :show-inheritance:
 
 fdsnws2seed module
 ------------------
 
-.. automodule:: fdsnws2seed
+.. automodule:: fdsnwsscripts.fdsnws2seed
     :members:
     :show-inheritance:
 
 fdsnws_fetch module
 -------------------
 
-.. automodule:: fdsnws_fetch
+.. automodule:: fdsnwsscripts.fdsnws_fetch
     :members:
     :show-inheritance:
