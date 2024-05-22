@@ -401,7 +401,7 @@ def main():
         while len(timespan) > 0:
             postdata = ""
 
-            ts_used = random.sample(timespan.items(), min(len(timespan), options.max_lines))
+            ts_used = random.sample(list(timespan.items()), min(len(timespan), options.max_lines))
 
             for ((net, sta, loc, cha), ts) in ts_used:
                 te = min(ts.end, ts.start + datetime.timedelta(minutes=options.max_timespan))
