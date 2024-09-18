@@ -4,6 +4,12 @@ fdsnwsscripts
 .. image:: https://img.shields.io/pypi/v/fdsnwsscripts.svg
    :target: https://img.shields.io/pypi/v/fdsnwsscripts.svg
    
+.. image:: https://img.shields.io/badge/DOI-10.5880/gfz.2.4.2024.002-green
+   :target: https://doi.org/10.5880/gfz.2.4.2024.002
+
+.. image:: https://img.shields.io/badge/License-LGPLv3-blue
+   :target: https://www.gnu.org/licenses/lgpl-3.0.en.html
+
 .. image:: https://img.shields.io/pypi/pyversions/fdsnwsscripts.svg
    :target: https://img.shields.io/pypi/pyversions/fdsnwsscripts.svg
    
@@ -14,6 +20,10 @@ fdsnwsscripts
    :target: https://img.shields.io/pypi/status/fdsnwsscripts.svg
    
 Scripts for working with (EIDA) FDSN web services.
+
+.. admonition:: Please cite the use of this software as:
+
+   Heinloo, A. (2024). fdsnws_scripts: a collection of next generation distributed data request tools based on FDSN web services and the EIDA routing service (Version 2023.191) [Computer software]. GFZ Data Services. DOI: 10.5880/gfz.2.4.2024.002
 
 Overview
 --------
@@ -39,3 +49,8 @@ There are four tools here:
 #. `fdsnws2seed` provides full SEED and dataless SEED using EIDA FDSN web services. Modern applications should use FDSN StationXML instead of SEED.
 
 #. `fdsnavail` lets the user interact with the new FDSN availability web service and compare to their local data holdings to find missing data.
+
+Documentation
+-------------
+
+Detailed user and developer documentation is available at `Read the Docs <https://fdsnwsscripts.readthedocs.io/>`_
