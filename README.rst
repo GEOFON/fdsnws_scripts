@@ -21,9 +21,11 @@ fdsnwsscripts
    
 Scripts for working with (EIDA) FDSN web services.
 
-.. admonition:: Please cite the use of this software as:
+Citation
+--------
+Please cite the use of this software as:
 
-   Heinloo, A. (2024). fdsnws_scripts: a collection of next generation distributed data request tools based on FDSN web services and the EIDA routing service (Version 2023.191) [Computer software]. GFZ Data Services. DOI: 10.5880/gfz.2.4.2024.002
+Heinloo, A. (2024). fdsnws_scripts: a collection of next generation distributed data request tools based on FDSN web services and the EIDA routing service (Version 2023.191) [Computer software]. GFZ Data Services. DOI: 10.5880/gfz.2.4.2024.002
 
 Overview
 --------
