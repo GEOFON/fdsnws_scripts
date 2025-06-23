@@ -115,7 +115,17 @@ except ImportError:
     import urllib.parse as urlparse
     import urllib.parse as urllib
 
-VERSION = "2022.017"
+try:
+    import eas2cli.core
+    _jwt_supported = True
+
+except ImportError:
+    print("Package eas2cli not found -- JWT support disabled",
+          file=sys.stderr)
+    _jwt_supported = False
+
+
+VERSION = "2025.175"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -143,6 +153,7 @@ DATA_ONLY_BLOCKETTE_NUMBER = 1000
 MINIMUM_RECORD_LENGTH = 256
 
 DEFAULT_TOKEN_LOCATION = os.environ.get("HOME", "") + "/.eidatoken"
+DEFAULT_JWT_LOCATION = os.environ.get("HOME", "") + "/.eidajwt"
 
 
 class Error(Exception):
@@ -492,6 +503,58 @@ class BreqParser(object):
                 if line:
                     self.__parse_line(line)
 
+class JWTHandler(urllib2.BaseHandler):
+    errrx = re.compile(r"""(?: |,)error_description=(["'])((?:\\1|(?:(?!\1)).)*)(\1)""", re.I)
+
+    def __init__(self, jwt_file, verbose):
+        self.__jwt_file = jwt_file
+        self.__tokens = eas2cli.core.readtokens(jwt_file)
+        self.__refreshed = False
+        self.__verbose = verbose
+
+    def __refresh(self):
+        eas2cli.core._silentrefresh(reftok=self.__tokens.refresh_token, tokenfile=self.__jwt_file)
+        self.__tokens = eas2cli.core.readtokens(self.__jwt_file)
+        self.__refreshed = True
+
+    def https_request(self, req):
+        req.add_unredirected_header("Authorization", "Bearer " + self.__tokens.access_token)
+        return req
+
+    def https_response(self, req, response):
+        if response.code == 401:
+            if self.__refreshed:  # avoid endless auth loop
+                fp = response
+
+                # replace response body by error description if available
+                headers = response.info()
+                authreq = headers.get_all("www-authenticate")
+
+                if authreq:
+                    for hdr in authreq:
+                        scheme = hdr.split()[0]
+                        if scheme.lower() == "bearer":
+                            m = JWTHandler.errrx.search(hdr)
+                            if m:
+                                err = m.group(2)
+                                if err:
+                                    fp = io.StringIO("JWT error: " + err)
+
+                            break
+
+                raise urllib2.HTTPError(req.full_url, response.code, response.msg,
+                                        headers, fp)
+
+
+            msg("refreshing token", self.__verbose)
+            self.__refresh()
+            req.add_unredirected_header("Authorization", "Bearer " + self.__tokens.access_token)
+            return self.parent.open(req, timeout=req.timeout)
+
+        # reset flag
+        self.__refreshed = False
+        return response
+
 
 msglock = threading.Lock()
 
@@ -551,7 +614,7 @@ def retry(urlopen, url, data, timeout, count, wait, verbose):
             time.sleep(wait)
 
 
-def fetch(url, cred, authdata, postlines, xc, tc, dest, nets, chans,
+def fetch(url, cred, authdata, jwt_file, postlines, xc, tc, dest, nets, chans,
           timeout, retry_count, retry_wait, finished, lock, verbose):
     try:
         url_handlers = []
@@ -644,6 +707,10 @@ def fetch(url, cred, authdata, postlines, xc, tc, dest, nets, chans,
                     % auth_url, verbose)
 
                 query_url = url.post()
+
+        elif _jwt_supported and jwt_file:  # use the JWT auth if supported
+            url_handlers.append(JWTHandler(jwt_file, verbose))
+            query_url = url.post()
 
         else:  # fetch data anonymously
             query_url = url.post()
@@ -915,7 +982,7 @@ def fetch(url, cred, authdata, postlines, xc, tc, dest, nets, chans,
         finished.put(threading.current_thread())
 
 
-def route(url, cred, authdata, postdata, dest, chans_to_check, timeout,
+def route(url, cred, authdata, jwt_file, postdata, dest, chans_to_check, timeout,
           retry_count, retry_wait, maxthreads, verbose):
     threads = []
     running = 0
@@ -981,6 +1048,7 @@ def route(url, cred, authdata, postdata, dest, chans_to_check, timeout,
                                                             args=(target_url,
                                                                   cred,
                                                                   authdata,
+                                                                  jwt_file,
                                                                   postlines,
                                                                   xc,
                                                                   tc,
@@ -1077,7 +1145,7 @@ def get_citation(nets, options):
     url = RoutingURL(urlparse.urlparse(options.url), qp)
     dest = io.BytesIO()
 
-    route(url, None, None, postdata, dest, None, options.timeout,
+    route(url, None, None, None, postdata, dest, None, options.timeout,
           options.retries, options.retry_wait, options.threads,
           options.verbose)
 
@@ -1146,7 +1214,8 @@ def main():
             timeout=600,
             retries=10,
             retry_wait=60,
-            threads=5)
+            threads=5,
+            jwt_file=DEFAULT_JWT_LOCATION)
 
     parser.add_option("-h", "--help", action="store_true", default=False,
                       help="show help message and exit")
@@ -1210,7 +1279,11 @@ def main():
                       help="URL,user,password file (CSV format) for queryauth")
 
     parser.add_option("-a", "--auth-file", type="string",
-                      help="file that contains the auth token")
+                      help="file that contains the EIDA legacy auth token")
+
+    if _jwt_supported:
+        parser.add_option("-j", "--jwt-file", type="string",
+                          help="file that contains the EIDA JWT token")
 
     parser.add_option("-p", "--post-file", type="string",
                       help="request file in FDSNWS POST format")
@@ -1285,7 +1358,7 @@ def main():
                 pass
 
         if authdata:
-            msg("using token in %s:" % options.auth_file, options.verbose)
+            msg("using EIDA legacy auth token in %s" % options.auth_file, options.verbose)
 
             try:
                 proc = subprocess.Popen(['gpg', '--decrypt'],
@@ -1309,6 +1382,9 @@ def main():
 
             except OSError as e:
                 msg(str(e))
+
+        elif _jwt_supported and options.jwt_file:
+            msg("using EIDA JWT token in %s" % options.jwt_file, options.verbose)
 
         if options.post_file:
             try:
@@ -1372,9 +1448,9 @@ def main():
         url = RoutingURL(urlparse.urlparse(options.url), qp)
         dest = open(options.output_file, 'wb')
 
-        nets = route(url, cred, authdata, postdata, dest, chans_to_check,
-                     options.timeout, options.retries, options.retry_wait,
-                     options.threads, options.verbose)
+        nets = route(url, cred, authdata, options.jwt_file, postdata, dest,
+                     chans_to_check, options.timeout, options.retries,
+                     options.retry_wait, options.threads, options.verbose)
 
         if nets and not options.no_citation:
               msg("retrieving network citation info", options.verbose)
