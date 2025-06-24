@@ -36,7 +36,17 @@ import shutil
 import dateutil.parser
 from fdsnwsscripts.seiscomp import fdsnxml, mseedlite, fseed, logs
 
-VERSION = "2019.259"
+try:
+    import eas2cli.core
+    _jwt_supported = True
+
+except ImportError:
+    print("Package eas2cli not found -- JWT support disabled",
+          file=sys.stderr)
+    _jwt_supported = False
+
+
+VERSION = "2025.175"
 ORGANIZATION = "EIDA"
 
 
@@ -215,7 +225,12 @@ def main():
 
     parser.add_option("-a", "--auth-file", type="string", action="callback",
                       callback=add_param2,
-                      help="file that contains the auth token")
+                      help="file that contains the EIDA legacy auth token")
+
+    if _jwt_supported:
+        parser.add_option("-j", "--jwt-file", type="string",
+                          callback=add_param2,
+                          help="file that contains the EIDA JWT token")
 
     parser.add_option("-p", "--post-file", type="string", action="callback",
                       callback=add_param12,
