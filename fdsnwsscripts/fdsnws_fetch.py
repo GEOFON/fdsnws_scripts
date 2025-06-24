@@ -125,7 +125,7 @@ except ImportError:
     _jwt_supported = False
 
 
-VERSION = "2025.174"
+VERSION = "2025.175"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -504,10 +504,13 @@ class BreqParser(object):
                     self.__parse_line(line)
 
 class JWTHandler(urllib2.BaseHandler):
-    def __init__(self, jwt_file):
+    errrx = re.compile(r"""(?: |,)error_description=(["'])((?:\\1|(?:(?!\1)).)*)(\1)""", re.I)
+
+    def __init__(self, jwt_file, verbose):
         self.__jwt_file = jwt_file
         self.__tokens = eas2cli.core.readtokens(jwt_file)
         self.__refreshed = False
+        self.__verbose = verbose
 
     def __refresh(self):
         eas2cli.core._silentrefresh(reftok=self.__tokens.refresh_token, tokenfile=self.__jwt_file)
@@ -520,11 +523,30 @@ class JWTHandler(urllib2.BaseHandler):
 
     def https_response(self, req, response):
         if response.code == 401:
-            if self.__refreshed:
-                # avoid endless auth loop
-                raise urllib2.HTTPError(req.full_url, 401, "JWT auth failed",
-                                        headers, None)
+            if self.__refreshed:  # avoid endless auth loop
+                fp = response
 
+                # replace response body by error description if available
+                headers = response.info()
+                authreq = headers.get_all("www-authenticate")
+
+                if authreq:
+                    for hdr in authreq:
+                        scheme = hdr.split()[0]
+                        if scheme.lower() == "bearer":
+                            m = JWTHandler.errrx.search(hdr)
+                            if m:
+                                err = m.group(2)
+                                if err:
+                                    fp = io.StringIO("JWT error: " + err)
+
+                            break
+
+                raise urllib2.HTTPError(req.full_url, response.code, response.msg,
+                                        headers, fp)
+
+
+            msg("refreshing token", self.__verbose)
             self.__refresh()
             req.add_unredirected_header("Authorization", "Bearer " + self.__tokens.access_token)
             return self.parent.open(req, timeout=req.timeout)
@@ -687,7 +709,7 @@ def fetch(url, cred, authdata, jwt_file, postlines, xc, tc, dest, nets, chans,
                 query_url = url.post()
 
         elif _jwt_supported and jwt_file:  # use the JWT auth if supported
-            url_handlers.append(JWTHandler(jwt_file))
+            url_handlers.append(JWTHandler(jwt_file, verbose))
             query_url = url.post()
 
         else:  # fetch data anonymously
@@ -1336,7 +1358,7 @@ def main():
                 pass
 
         if authdata:
-            msg("using EIDA legacy auth token in %s:" % options.auth_file, options.verbose)
+            msg("using EIDA legacy auth token in %s" % options.auth_file, options.verbose)
 
             try:
                 proc = subprocess.Popen(['gpg', '--decrypt'],
@@ -1361,8 +1383,8 @@ def main():
             except OSError as e:
                 msg(str(e))
 
-        elif options.jwt_file:
-            msg("using EIDA JWT token in %s:" % options.jwt_file, options.verbose)
+        elif _jwt_supported and options.jwt_file:
+            msg("using EIDA JWT token in %s" % options.jwt_file, options.verbose)
 
         if options.post_file:
             try:
