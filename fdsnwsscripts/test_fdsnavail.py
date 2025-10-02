@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    :Copyright:
-       2019-2024 Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences (Andres Heinloo)
+       2019-2025 GFZ Helmholtz Centre for Geosciences
    :License:
        LGPLv3 GNU Lesser General Public License v. 3 (29 June 2007, or later)
    :Platform:

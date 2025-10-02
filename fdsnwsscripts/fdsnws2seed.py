@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    :Copyright:
-       2019-2024 Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences (Andres Heinloo)
+       2019-2025 GFZ Helmholtz Centre for Geosciences
    :License:
        LGPLv3 GNU Lesser General Public License v. 3 (29 June 2007, or later)
    :Platform:
@@ -46,7 +46,7 @@ except ImportError:
     _jwt_supported = False
 
 
-VERSION = "2025.175"
+VERSION = "2025.275"
 ORGANIZATION = "EIDA"
 
 
@@ -170,7 +170,8 @@ def main():
             timeout=600,
             retries=10,
             retry_wait=60,
-            threads=5)
+            threads=5,
+            max_lines=100)
 
     parser.add_option("-v", "--verbose", action="store_true", default=False,
                       help="verbose mode")
@@ -247,11 +248,12 @@ def main():
     parser.add_option("-d", "--dataless", action="store_true", default=False,
                       help="create dataless SEED volume")
 
-    parser.add_option("-l", "--label", type="string",
-                      help="label of SEED volume")
-
     parser.add_option("-o", "--output-file", type="string",
                       help="file where SEED data is written")
+
+    parser.add_option("-l", "--max-lines", type="int", action="callback",
+                      callback=add_param,
+                      help="max lines per request (default %default)")
 
     parser.add_option("-z", "--no-citation", action="store_true", default=False,
                       help="suppress network citation info")
@@ -322,7 +324,7 @@ def main():
                 logs.error(str(e))
                 return 1
 
-    seed_volume = fseed.SEEDVolume(inv, ORGANIZATION, options.label, False)
+    seed_volume = fseed.SEEDVolume(inv, ORGANIZATION, None, False)
 
     if options.dataless:
         for net in iterinv(inv.network):

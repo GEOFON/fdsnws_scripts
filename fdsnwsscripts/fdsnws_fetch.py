@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""fdsnws_fetch
+"""fdsnws_fetch - A command-line FDSN Web Service client using EIDA routing
+and authentication.
+
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published
@@ -17,15 +19,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    :Copyright:
-       2019-2024 Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences (Andres Heinloo)
+       2019-2025 GFZ Helmholtz Centre for Geosciences
    :License:
        LGPLv3 GNU Lesser General Public License v. 3 (29 June 2007, or later)
    :Platform:
        Linux
-"""
-
-"""
-A command-line FDSN Web Service client using EIDA routing and authentication.
 
 Usage Examples
 ==============
@@ -125,7 +123,7 @@ except ImportError:
     _jwt_supported = False
 
 
-VERSION = "2025.175"
+VERSION = "2025.275"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -317,7 +315,7 @@ class XMLCombiner(object):
 
             try:
                 created = root.find(STATIONXML_RESOURCE_METADATA_ELEMENTS[1])
-                created.text = datetime.datetime.utcnow().strftime(
+                created.text = datetime.datetime.now(datetime.UTC).strftime(
                     '%Y-%m-%dT%H:%M:%S')
             except Exception:
                 pass
@@ -389,28 +387,28 @@ class ArclinkParser(object):
 
 
 class BreqParser(object):
-    __tokenrule = "^\.[A-Z_]+[:]?\s"
+    __tokenrule = r"^\.[A-Z_]+[:]?\s"
 
-    __reqlist = ("(?P<station>[\w?\*]+)",
-                 "(?P<network>[\w?]+)",
-                 "((?P<beg_2year>\d{2})|(?P<beg_4year>\d{4}))",
-                 "(?P<beg_month>\d{1,2})",
-                 "(?P<beg_day>\d{1,2})",
-                 "(?P<beg_hour>\d{1,2})",
-                 "(?P<beg_min>\d{1,2})",
-                 "(?P<beg_sec>\d{1,2})(\.\d*)?",
-                 "((?P<end_2year>\d{2})|(?P<end_4year>\d{4}))",
-                 "(?P<end_month>\d{1,2})",
-                 "(?P<end_day>\d{1,2})",
-                 "(?P<end_hour>\d{1,2})",
-                 "(?P<end_min>\d{1,2})",
-                 "(?P<end_sec>\d{1,2})(\.\d*)?",
-                 "(?P<cha_num>\d+)",
-                 "(?P<cha_list>[\w?\s*]+)")
+    __reqlist = (r"(?P<station>[\w?\*]+)",
+                 r"(?P<network>[\w?]+)",
+                 r"((?P<beg_2year>\d{2})|(?P<beg_4year>\d{4}))",
+                 r"(?P<beg_month>\d{1,2})",
+                 r"(?P<beg_day>\d{1,2})",
+                 r"(?P<beg_hour>\d{1,2})",
+                 r"(?P<beg_min>\d{1,2})",
+                 r"(?P<beg_sec>\d{1,2})(\.\d*)?",
+                 r"((?P<end_2year>\d{2})|(?P<end_4year>\d{4}))",
+                 r"(?P<end_month>\d{1,2})",
+                 r"(?P<end_day>\d{1,2})",
+                 r"(?P<end_hour>\d{1,2})",
+                 r"(?P<end_min>\d{1,2})",
+                 r"(?P<end_sec>\d{1,2})(\.\d*)?",
+                 r"(?P<cha_num>\d+)",
+                 r"(?P<cha_list>[\w?\s*]+)")
 
     def __init__(self):
         self.__rx_tokenrule = re.compile(BreqParser.__tokenrule)
-        self.__rx_reqlist = re.compile("\s+".join(BreqParser.__reqlist))
+        self.__rx_reqlist = re.compile(r"\s+".join(BreqParser.__reqlist))
         self.postdata = ""
         self.failstr = ""
 
@@ -475,7 +473,7 @@ class BreqParser(object):
                 return
 
             location = "*"
-            cha_list = re.findall("([\w?\*]+)\s*", d["cha_list"])
+            cha_list = re.findall(r"([\w?\*]+)\s*", d["cha_list"])
 
             if len(cha_list) == int(d['cha_num'])+1:
                 location = cha_list.pop()
@@ -615,7 +613,7 @@ def retry(urlopen, url, data, timeout, count, wait, verbose):
 
 
 def fetch(url, cred, authdata, jwt_file, postlines, xc, tc, dest, nets, chans,
-          timeout, retry_count, retry_wait, finished, lock, verbose):
+          timeout, retry_count, retry_wait, finished, lock, maxlines, verbose):
     try:
         url_handlers = []
 
@@ -718,7 +716,7 @@ def fetch(url, cred, authdata, jwt_file, postlines, xc, tc, dest, nets, chans,
         opener = urllib2.build_opener(*url_handlers)
 
         i = 0
-        n = len(postlines)
+        n = min(len(postlines), maxlines)
 
         while i < len(postlines):
             if n == len(postlines):
@@ -983,7 +981,7 @@ def fetch(url, cred, authdata, jwt_file, postlines, xc, tc, dest, nets, chans,
 
 
 def route(url, cred, authdata, jwt_file, postdata, dest, chans_to_check, timeout,
-          retry_count, retry_wait, maxthreads, verbose):
+          retry_count, retry_wait, maxthreads, maxlines, verbose):
     threads = []
     running = 0
     finished = Queue.Queue()
@@ -1060,6 +1058,7 @@ def route(url, cred, authdata, jwt_file, postdata, dest, chans_to_check, timeout
                                                                   retry_wait,
                                                                   finished,
                                                                   lock,
+                                                                  maxlines,
                                                                   verbose)))
 
                         urlline = None
@@ -1147,7 +1146,7 @@ def get_citation(nets, options):
 
     route(url, None, None, None, postdata, dest, None, options.timeout,
           options.retries, options.retry_wait, options.threads,
-          options.verbose)
+          options.max_lines, options.verbose)
 
     dest.seek(0)
     net_desc = {}
@@ -1215,13 +1214,11 @@ def main():
             retries=10,
             retry_wait=60,
             threads=5,
+            max_lines=100,
             jwt_file=DEFAULT_JWT_LOCATION)
 
     parser.add_option("-h", "--help", action="store_true", default=False,
                       help="show help message and exit")
-
-    parser.add_option("-l", "--longhelp", action="store_true", default=False,
-                      help="show extended help message and exit")
 
     parser.add_option("-v", "--verbose", action="store_true", default=False,
                       help="verbose mode")
@@ -1297,6 +1294,9 @@ def main():
     parser.add_option("-o", "--output-file", type="string",
                       help="file where downloaded data is written")
 
+    parser.add_option("-l", "--max-lines", type="int",
+                      help="max lines per request (default %default)")
+
     parser.add_option("-z", "--no-citation", action="store_true", default=False,
                       help="suppress network citation info")
 
@@ -1306,12 +1306,6 @@ def main():
     (options, args) = parser.parse_args()
 
     if options.help:
-        print(__doc__.split("Usage Examples", 1)[0], end="")
-        parser.print_help()
-        return 0
-
-    if options.longhelp:
-        print(__doc__)
         parser.print_help()
         return 0
 
@@ -1429,6 +1423,9 @@ def main():
             if postdata:
                 for line in postdata.splitlines():
                     nslc = line.split()[:4]
+                    if nslc[0].startswith('_'):  # virtual net
+                        continue
+
                     if nslc[2] == '--': nslc[2] = ''
                     chans_to_check.add('.'.join(nslc))
 
@@ -1439,6 +1436,9 @@ def main():
                 cha = qp.get('channel', '*')
 
                 for n in net.split(','):
+                    if n.startswith('_'):  # virtual net
+                        continue
+
                     for s in sta.split(','):
                         for l in loc.split(','):
                             for c in cha.split(','):
@@ -1450,7 +1450,8 @@ def main():
 
         nets = route(url, cred, authdata, options.jwt_file, postdata, dest,
                      chans_to_check, options.timeout, options.retries,
-                     options.retry_wait, options.threads, options.verbose)
+                     options.retry_wait, options.threads, options.max_lines,
+                     options.verbose)
 
         if nets and not options.no_citation:
               msg("retrieving network citation info", options.verbose)

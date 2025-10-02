@@ -17,11 +17,11 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'fdsnwsscripts'
-copyright = '2019-2023 Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences, Potsdam, Germany'
+copyright = '2019-2025 GFZ Helmholtz Centre for Geosciences'
 author = 'Andres Heinloo'
 
 # The full version, including alpha/beta/rc tags
-release = '2023.191'
+release = '2025.275'
 
 
 # -- General configuration ---------------------------------------------------

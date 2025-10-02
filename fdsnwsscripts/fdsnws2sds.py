@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    :Copyright:
-       2019-2024 Helmholtz Centre Potsdam GFZ German Research Centre for Geosciences (Andres Heinloo)
+       2019-2025 GFZ Helmholtz Centre for Geosciences
    :License:
        LGPLv3 GNU Lesser General Public License v. 3 (29 June 2007, or later)
    :Platform:
@@ -47,7 +47,7 @@ except ImportError:
     _jwt_supported = False
 
 
-VERSION = "2025.175"
+VERSION = "2025.275"
 
 
 class Error(Exception):
@@ -246,7 +246,7 @@ def main():
             retries=10,
             retry_wait=60,
             threads=5,
-            max_lines=1000,
+            max_lines=100,
             max_timespan=1440)
 
     parser.add_option("-v", "--verbose", action="store_true", default=False,

@@ -23,7 +23,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='2023.191',
+    version='2025.275',
 
     description='fdsnwsscripts: Scripts for working with (EIDA) FDSN web services',
     long_description=long_description,
@@ -82,7 +82,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=['python-dateutil', 'requests', 'sphinx-rtd-theme'],
 
-    python_requires='>=2.7',
+    python_requires='>=3',
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
     # for example:
