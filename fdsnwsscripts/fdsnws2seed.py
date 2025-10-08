@@ -36,8 +36,17 @@ import shutil
 import dateutil.parser
 from fdsnwsscripts.seiscomp import fdsnxml, mseedlite, fseed, logs
 
+try:
+    import eas2cli.core
+    _jwt_supported = True
 
-VERSION = "2025.281"
+except ImportError:
+    print("Package eas2cli not found -- JWT support disabled",
+          file=sys.stderr)
+    _jwt_supported = False
+
+
+VERSION = "2025.282"
 ORGANIZATION = "EIDA"
 
 
