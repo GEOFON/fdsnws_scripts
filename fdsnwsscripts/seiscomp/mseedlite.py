@@ -17,8 +17,7 @@ any later version.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from typing import Tuple
-from collections.abc import Iterable
+from typing import Tuple, Iterable
 import datetime
 import struct
 import sys

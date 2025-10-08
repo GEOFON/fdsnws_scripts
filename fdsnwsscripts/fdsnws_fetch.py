@@ -123,7 +123,7 @@ except ImportError:
     _jwt_supported = False
 
 
-VERSION = "2025.275"
+VERSION = "2025.281"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',

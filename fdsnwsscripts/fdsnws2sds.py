@@ -37,17 +37,8 @@ import dateutil.parser
 
 from fdsnwsscripts.seiscomp import mseedlite, logs
 
-try:
-    import eas2cli.core
-    _jwt_supported = True
 
-except ImportError:
-    print("Package eas2cli not found -- JWT support disabled",
-          file=sys.stderr)
-    _jwt_supported = False
-
-
-VERSION = "2025.275"
+VERSION = "2025.281"
 
 
 class Error(Exception):
@@ -375,20 +366,24 @@ def main():
             if not line or line.startswith('#'):
                 continue
 
-            starttime = max(dateutil.parser.parse(line.split('|')[15]), times['starttime'])
+            t = dateutil.parser.parse(line.split('|')[15])
+
+            if t.tzinfo is not None:
+                t = t.astimezone(dateutil.tz.tzutc()).replace(tzinfo=None)
+
+            starttime = max(t, times['starttime'])
 
             try:
-                endtime = min(dateutil.parser.parse(line.split('|')[16]), times['endtime'])
+                t = dateutil.parser.parse(line.split('|')[16])
+
+                if t.tzinfo is not None:
+                    t = t.astimezone(dateutil.tz.tzutc()).replace(tzinfo=None)
+
+                endtime = min(t, times['endtime'])
 
             except ValueError:
                 # dateutil.parser.parse('') now causes ValueError instead of current time
                 endtime = min(datetime.datetime.now(), times['endtime'])
-
-            if starttime.tzinfo is not None:
-                starttime = starttime.astimezone(dateutil.tz.tzutc()).replace(tzinfo=None)
-
-            if endtime.tzinfo is not None:
-                endtime = endtime.astimezone(dateutil.tz.tzutc()).replace(tzinfo=None)
 
             try:
                 ts = timespan[tuple(line.split('|')[:4])]
