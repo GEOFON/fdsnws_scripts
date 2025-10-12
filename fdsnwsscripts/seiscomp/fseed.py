@@ -215,6 +215,9 @@ def _mkseedstring(nblk, nfld, s, min_length, max_length, flags):
         X = True
         rx_list.append("_")
 
+    if s is None:
+        s = ""
+
     sn = s.strip()[:max_length]
 
     if U and not L:

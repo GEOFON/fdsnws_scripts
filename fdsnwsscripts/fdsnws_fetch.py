@@ -118,12 +118,12 @@ try:
     _jwt_supported = True
 
 except ImportError:
-    print("Package eas2cli not found -- JWT support disabled",
+    print("Package eas2cli not found or not usable -- JWT support disabled",
           file=sys.stderr)
     _jwt_supported = False
 
 
-VERSION = "2025.282"
+VERSION = "2025.284"
 
 GET_PARAMS = set(('net', 'network',
                   'sta', 'station',
@@ -543,11 +543,14 @@ class JWTHandler(urllib2.BaseHandler):
                 raise urllib2.HTTPError(req.full_url, response.code, response.msg,
                                         headers, fp)
 
-
             msg("refreshing token", self.__verbose)
-            self.__refresh()
-            req.add_unredirected_header("Authorization", "Bearer " + self.__tokens.access_token)
-            return self.parent.open(req, timeout=req.timeout)
+
+            try:
+                self.__refresh()
+                return self.parent.open(req, timeout=req.timeout)
+
+            except Exception as e:
+                msg(str(e))
 
         # reset flag
         self.__refreshed = False
@@ -707,7 +710,12 @@ def fetch(url, cred, authdata, jwt_file, postlines, xc, tc, dest, nets, chans,
                 query_url = url.post()
 
         elif _jwt_supported and jwt_file:  # use the JWT auth if supported
-            url_handlers.append(JWTHandler(jwt_file, verbose))
+            try:
+                url_handlers.append(JWTHandler(jwt_file, verbose))
+
+            except Exception as e:
+                msg(str(e))
+
             query_url = url.post()
 
         else:  # fetch data anonymously
@@ -1378,7 +1386,12 @@ def main():
                 msg(str(e))
 
         elif _jwt_supported and options.jwt_file:
-            msg("using EIDA JWT token in %s" % options.jwt_file, options.verbose)
+            if os.path.exists(options.jwt_file):
+                msg("using EIDA JWT token in %s" % options.jwt_file, options.verbose)
+
+            else:
+                msg("%s does not exist -- JWT auth disabled" % options.jwt_file)
+                options.jwt_file = None
 
         if options.post_file:
             try:

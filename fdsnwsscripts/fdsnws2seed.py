@@ -41,12 +41,12 @@ try:
     _jwt_supported = True
 
 except ImportError:
-    print("Package eas2cli not found -- JWT support disabled",
+    print("Package eas2cli not found or not usable -- JWT support disabled",
           file=sys.stderr)
     _jwt_supported = False
 
 
-VERSION = "2025.282"
+VERSION = "2025.284"
 ORGANIZATION = "EIDA"
 
 
@@ -229,7 +229,7 @@ def main():
                       help="file that contains the EIDA legacy auth token")
 
     if _jwt_supported:
-        parser.add_option("-j", "--jwt-file", type="string",
+        parser.add_option("-j", "--jwt-file", type="string", action="callback",
                           callback=add_param2,
                           help="file that contains the EIDA JWT token")
 
