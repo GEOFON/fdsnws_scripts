@@ -21,7 +21,7 @@ copyright = '2019-2025 GFZ Helmholtz Centre for Geosciences'
 author = 'Andres Heinloo'
 
 # The full version, including alpha/beta/rc tags
-release = '2025.275'
+release = '2025.286'
 
 
 # -- General configuration ---------------------------------------------------

@@ -91,6 +91,7 @@ import os
 import fnmatch
 import subprocess
 import dateutil.parser
+import gzip
 
 try:
     # Python 3.2 and earlier
@@ -576,19 +577,30 @@ def msg(s, verbose=3):
 
 
 def retry(urlopen, url, data, timeout, count, wait, verbose):
-    # force no gzip encoding, because urllib cannot handle this
-    url = urllib2.Request(url, None, {"Accept-Encoding": ""})
+    headers = {
+        "Accept-Encoding": "gzip",
+        "User-Agent": "fdsnws_fetch/" + VERSION
+    }
+
+    req = urllib2.Request(url, headers=headers)
 
     n = 0
 
     while True:
-        if n >= count:
-            return urlopen(url, data, timeout)
-
         try:
             n += 1
 
-            fd = urlopen(url, data, timeout)
+            fd = urlopen(req, data, timeout)
+            code = fd.getcode()
+            info = fd.info()
+
+            if info.get("Content-Encoding") == "gzip":
+                fd = gzip.GzipFile(fileobj=fd, mode='rb')
+                fd.getcode = lambda: code
+                fd.info = lambda: info
+
+            if n > count:
+                return fd
 
             if fd.getcode() == 200 or fd.getcode() == 204:
                 return fd
@@ -601,6 +613,11 @@ def retry(urlopen, url, data, timeout, count, wait, verbose):
 
         except urllib2.HTTPError as e:
             if e.code >= 400 and e.code < 500:
+                if e.info().get("Content-Encoding") == "gzip":
+                    with gzip.GzipFile(fileobj=e, mode='rb') as fd:
+                        data = fd.read()
+                        e.read = lambda: data
+
                 raise
 
             msg("retrying %s (%d) after %d seconds due to %s"

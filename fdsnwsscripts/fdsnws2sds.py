@@ -47,7 +47,7 @@ except ImportError:
     _jwt_supported = False
 
 
-VERSION = "2025.284"
+VERSION = "2025.286"
 
 
 class Error(Exception):
@@ -246,7 +246,7 @@ def main():
             retries=10,
             retry_wait=60,
             threads=5,
-            max_lines=100,
+            max_lines=1000,
             max_timespan=1440)
 
     parser.add_option("-v", "--verbose", action="store_true", default=False,

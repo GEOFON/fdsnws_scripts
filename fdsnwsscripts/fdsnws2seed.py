@@ -46,7 +46,7 @@ except ImportError:
     _jwt_supported = False
 
 
-VERSION = "2025.284"
+VERSION = "2025.286"
 ORGANIZATION = "EIDA"
 
 
