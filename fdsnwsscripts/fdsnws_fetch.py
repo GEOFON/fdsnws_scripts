@@ -582,6 +582,9 @@ def retry(urlopen, url, data, timeout, count, wait, verbose):
         "User-Agent": "fdsnws_fetch/" + VERSION
     }
 
+    if data:
+        headers["Content-Type"] = "text/plain"
+
     req = urllib2.Request(url, headers=headers)
 
     n = 0
