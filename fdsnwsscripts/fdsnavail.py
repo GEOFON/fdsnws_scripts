@@ -517,6 +517,7 @@ def main():
     parser.add_argument("-V", "--version", action='version', version="%(prog)s " + VERSION)
     # parser.add_argument("-u", "--url", default="geofon.gfz-potsdam.de",
     #                     help="URL of availability web service. (default is EIDA).")
+    parser.set_defaults(func=lambda args: parser.print_help())
 
     subparserhelp = """Commands:"""
     subparsers = parser.add_subparsers(help=subparserhelp)
