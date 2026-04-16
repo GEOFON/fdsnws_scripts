@@ -41,6 +41,9 @@ import argparse
 
 
 VERSION = "2023.191"
+headers = {
+    'User-Agent': f'fdsnavail/{VERSION}',
+}
 
 
 def str2date(dstr: str) -> Union[datetime, None]:
@@ -127,7 +130,8 @@ class Availability:
                 raise Exception('Using post_file is incompatible with the rest of the parameters')
             with open(postfile, 'r') as fin:
                 # Query routes in post format for the availability web service
-                routes = requests.post(routing, 'format=post\nservice=availability\n%s' % (fin.read(),))
+                routes = requests.post(routing, 'format=post\nservice=availability\n%s' % (fin.read(),),
+                                       headers=headers)
                 # print(routes.content)
         else:
             if stream is None:
@@ -139,7 +143,7 @@ class Availability:
             if endtime is not None:
                 auxurl += "&endtime=%s" % endtime.isoformat()
             # Query routes
-            routes = requests.get(auxurl)
+            routes = requests.get(auxurl, headers=headers)
 
         dc = None
         # Read each route
@@ -157,7 +161,8 @@ class Availability:
             # Read normal line and query to the availability DC
             # Load the dict from the response
             # print("%s?format=json&mergegaps=1.0&%s" % (dc, line2filter(line)))
-            resp = requests.get("%s?format=json&mergegaps=1.0&%s" % (dc, line2filter(line)))
+            resp = requests.get("%s?format=json&mergegaps=1.0&%s" % (dc, line2filter(line)),
+                                headers=headers)
             if resp.status_code != 200:
                 print('Error retrieving %s from %s' % (line, dc))
                 continue
