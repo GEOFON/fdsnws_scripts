@@ -40,7 +40,7 @@ from json import dumps
 import argparse
 
 
-VERSION = "2023.191"
+VERSION = "2026.106"
 headers = {
     'User-Agent': f'fdsnavail/{VERSION}',
 }

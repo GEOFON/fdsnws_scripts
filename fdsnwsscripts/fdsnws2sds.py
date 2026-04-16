@@ -47,7 +47,7 @@ except ImportError:
     _jwt_supported = False
 
 
-VERSION = "2025.286"
+VERSION = "2026.106"
 
 
 class Error(Exception):
