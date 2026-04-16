@@ -33,7 +33,7 @@ setup(
 
     # Author details
     author='Andres Heinloo',
-    author_email='andres@gfz-potsdam.de',
+    author_email='andres@gfz.de',
 
     # Choose your license
     license='GPLv3',

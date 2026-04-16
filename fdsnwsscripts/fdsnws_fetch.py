@@ -1237,7 +1237,7 @@ def main():
             add_help_option=False)
 
     parser.set_defaults(
-            url="http://geofon.gfz-potsdam.de/eidaws/routing/1/",
+            url="https://geofon.gfz.de/eidaws/routing/1/",
             timeout=600,
             retries=10,
             retry_wait=60,
