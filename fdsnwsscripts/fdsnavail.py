@@ -118,12 +118,9 @@ class Availability:
     Availability information about streams
     """
     def __init__(self, stream: Stream = None, starttime: datetime = None, endtime: datetime = None,
-                 postfile: str = None):
+                 postfile: str = None, routing: str = 'https://geofon.gfz.de/eidaws/routing/1/query'):
         # Dictionary to save extents
         self.__dict: Dict[Stream, list] = dict()
-
-        # GEOFON Routing Service
-        routing = 'https://geofon.gfz-potsdam.de/eidaws/routing/1/query'
 
         if postfile is not None:
             if (stream is not None) or (starttime is not None) or (endtime is not None):
@@ -515,7 +512,7 @@ def compare(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-V", "--version", action='version', version="%(prog)s " + VERSION)
-    # parser.add_argument("-u", "--url", default="geofon.gfz-potsdam.de",
+    # parser.add_argument("-u", "--url", default="geofon.gfz.de",
     #                     help="URL of availability web service. (default is EIDA).")
     parser.set_defaults(func=lambda args: parser.print_help())
 
